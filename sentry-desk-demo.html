@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentry Desk — Competitive Intelligence & Proposal Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12151c;
+    --ink-soft:#1c212b;
+    --paper:#e9e1cc;
+    --paper-dim:#ded4b8;
+    --line: rgba(18,21,28,0.16);
+    --line-paper: rgba(18,21,28,0.22);
+    --verified:#3f7a5c;
+    --verified-bg:#e4ede6;
+    --medium:#a9762f;
+    --medium-bg:#f1e6d2;
+    --low:#a23e34;
+    --low-bg:#f2e0dd;
+    --steel:#3f5c78;
+    --text:#e9e1cc;
+    --text-dim:#a9a591;
+    --text-ink:#12151c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:960px;margin:0 auto;padding:28px 24px 80px;}
+
+  /* ===== Masthead ===== */
+  .masthead{
+    border:1px solid var(--line);
+    border-bottom:3px solid var(--paper);
+    padding:22px 26px 18px;
+    margin-bottom:0;
+  }
+  .masthead-top{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.02em;
+    color:var(--text-dim);
+    margin-bottom:14px;
+  }
+  .masthead h1{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    font-size:30px;
+    margin:0 0 6px;
+    color:var(--paper);
+    letter-spacing:-0.01em;
+  }
+  .masthead .positioning{
+    font-size:14.5px;
+    line-height:1.55;
+    color:var(--text-dim);
+    max-width:64ch;
+    margin:0;
+  }
+  .masthead .meta-row{
+    display:flex;gap:22px;margin-top:16px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;color:var(--text-dim);
+  }
+  .meta-row b{color:var(--paper);font-weight:500;}
+
+  /* ===== Tabs ===== */
+  .tabs{
+    display:flex;
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+  }
+  .tab{
+    flex:1;
+    text-align:left;
+    padding:13px 18px;
+    background:var(--ink-soft);
+    border:none;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .tab:last-child{border-right:none;}
+  .tab b{display:block;font-family:'Source Serif 4',serif;font-size:15px;font-weight:600;color:inherit;margin-top:3px;}
+  .tab.active{
+    background:var(--paper);
+    color:var(--text-ink);
+    border-bottom-color:var(--paper);
+  }
+  .tab.active b{color:var(--text-ink);}
+  .tab:not(.active):hover{background:#242a35;color:var(--paper);}
+
+  /* ===== Panel ===== */
+  .panel{
+    background:var(--paper);
+    color:var(--text-ink);
+    border:1px solid var(--line);
+    border-top:none;
+    padding:26px 28px 34px;
+    min-height:420px;
+  }
+  .panel-head{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--text-ink);
+    padding-bottom:10px;margin-bottom:20px;
+  }
+  .panel-head h2{
+    font-family:'Source Serif 4',serif;
+    font-size:21px;font-weight:600;margin:0;
+  }
+  .panel-head .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a5646;}
+
+  button.action{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    background:var(--text-ink);
+    color:var(--paper);
+    border:none;
+    padding:9px 16px;
+    cursor:pointer;
+    letter-spacing:0.01em;
+  }
+  button.action:hover{background:#2b3140;}
+  button.action:disabled{background:#8a8672;cursor:not-allowed;}
+  button.ghost{
+    background:transparent;border:1px solid var(--line-paper);color:var(--text-ink);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;padding:7px 12px;cursor:pointer;
+  }
+  button.ghost:hover{background:rgba(18,21,28,0.06);}
+
+  /* ===== Sources tab ===== */
+  .competitor{
+    border:1px solid var(--line-paper);
+    margin-bottom:14px;
+    background:rgba(255,255,255,0.28);
+  }
+  .competitor-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:13px 16px;cursor:pointer;
+  }
+  .competitor-head .name{
+    font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;
+  }
+  .competitor-head .status{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    color:#5a5646;
+  }
+  .competitor-head .caret{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5a5646;}
+  .sources-list{
+    border-top:1px solid var(--line-paper);
+    padding:12px 16px 14px;
+    display:none;
+  }
+  .competitor.open .sources-list{display:block;}
+  .source-row{
+    display:grid;
+    grid-template-columns:90px 1fr 110px;
+    gap:10px;
+    padding:7px 0;
+    border-bottom:1px dashed var(--line-paper);
+    font-size:13px;
+    align-items:center;
+  }
+  .source-row:last-child{border-bottom:none;}
+  .source-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;
+    text-transform:uppercase;letter-spacing:0.04em;
+    color:#5a5646;
+  }
+  .source-url{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--steel);word-break:break-all;}
+  .source-checked{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5a5646;text-align:right;}
+
+  .add-competitor{
+    border:1px dashed var(--line-paper);
+    padding:12px 16px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:#5a5646;text-align:center;
+  }
+
+  /* ===== Findings tab ===== */
+  .scan-bar{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:18px;
+  }
+  .scan-bar .status-text{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#5a5646;}
+
+  .finding{
+    border:1px solid var(--line-paper);
+    background:rgba(255,255,255,0.32);
+    margin-bottom:16px;
+    padding:16px 18px 18px;
+    opacity:0;
+    transform:translateY(6px);
+    animation:reveal .38s ease forwards;
+  }
+  @keyframes reveal{to{opacity:1;transform:translateY(0);}}
+  .finding-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;}
+  .finding-title{
+    font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;
+    line-height:1.3;
+  }
+  .finding-meta{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5a5646;
+    margin-top:5px;
+  }
+  .stamp{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;font-weight:600;letter-spacing:0.06em;
+    padding:4px 9px;
+    border:1.5px solid;
+    white-space:nowrap;
+    transform:rotate(-2deg);
+    flex-shrink:0;
+  }
+  .stamp.high{color:var(--verified);border-color:var(--verified);background:var(--verified-bg);}
+  .stamp.medium{color:var(--medium);border-color:var(--medium);background:var(--medium-bg);}
+  .stamp.low{color:var(--low);border-color:var(--low);background:var(--low-bg);}
+
+  .evidence{
+    margin-top:12px;
+    background:var(--ink);
+    color:#c8d6cf;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    line-height:1.6;
+    padding:12px 14px;
+    border-left:3px solid var(--steel);
+  }
+  .evidence .cite{color:var(--text-dim);font-size:10.5px;margin-top:8px;display:block;}
+
+  .trail{
+    display:flex;gap:0;margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  }
+  .trail .step{
+    display:flex;align-items:center;gap:6px;padding-right:14px;color:#5a5646;
+  }
+  .trail .dot{width:7px;height:7px;border-radius:50%;background:var(--verified);flex-shrink:0;}
+  .trail .dot.fail{background:var(--low);}
+  .trail .arrow{margin:0 8px;color:#9a9682;}
+
+  .finding-foot{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:14px;padding-top:12px;border-top:1px dashed var(--line-paper);
+  }
+  .include-toggle{
+    display:flex;align-items:center;gap:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a5646;
+    cursor:pointer;user-select:none;
+  }
+  .include-toggle input{accent-color:var(--text-ink);width:14px;height:14px;}
+
+  /* ===== Proposal tab ===== */
+  .doc{
+    background:#fff;
+    border:1px solid var(--line-paper);
+    padding:32px 36px;
+    font-family:'Source Serif 4',serif;
+  }
+  .doc h3{font-size:22px;margin:0 0 4px;font-weight:700;}
+  .doc .doc-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a5646;margin-bottom:22px;}
+  .doc section{margin-bottom:20px;}
+  .doc h4{font-size:14px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.04em;color:#5a5646;margin:0 0 8px;font-weight:600;}
+  .doc p{font-size:14.5px;line-height:1.65;margin:0 0 10px;color:#22242b;}
+  .doc .rec{font-size:13.5px;color:#3f5c78;font-family:'IBM Plex Sans',sans-serif;font-style:italic;}
+  .doc .empty{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:#7a7666;font-style:italic;}
+
+  .footer-note{
+    margin-top:22px;
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);
+    display:flex;justify-content:space-between;
+  }
+
+  @media (max-width:640px){
+    .tabs{flex-direction:column;}
+    .tab{border-right:none;}
+    .source-row{grid-template-columns:1fr;}
+    .source-checked{text-align:left;}
+    .masthead-top{flex-direction:column;gap:4px;}
+    .doc{padding:22px 20px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="masthead">
+    <div class="masthead-top">
+      <span>WORKSPACE FILE — DEVTRACK</span>
+      <span id="dateStamp"></span>
+    </div>
+    <h1>Sentry Desk</h1>
+    <p class="positioning">DevTrack is a lightweight project-tracking tool for small engineering teams. This workspace watches three direct competitors across pricing, changelog, and product-page channels to surface moves worth reacting to.</p>
+    <div class="meta-row">
+      <span>Sources tracked: <b>11</b></span>
+      <span>Scan runs: <b id="scanCountLabel">2</b></span>
+      <span>Median EGA: <b>91%</b></span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="sources">01<b>Sources</b></button>
+    <button class="tab" data-tab="findings">02<b>Findings</b></button>
+    <button class="tab" data-tab="proposal">03<b>Proposal</b></button>
+  </div>
+
+  <!-- ===================== SOURCES ===================== -->
+  <div class="panel" id="panel-sources">
+    <div class="panel-head">
+      <h2>Competitor sources</h2>
+      <span class="sub">3 competitors · 11 monitored URLs</span>
+    </div>
+
+    <div id="competitorList"></div>
+
+    <div class="add-competitor">+ add a competitor (pricing, product, changelog, blog, or repo URL)</div>
+  </div>
+
+  <!-- ===================== FINDINGS ===================== -->
+  <div class="panel" id="panel-findings" style="display:none;">
+    <div class="panel-head">
+      <h2>Scan findings</h2>
+      <span class="sub" id="findingsSub">3 verified · 1 unsubstantiated</span>
+    </div>
+
+    <div class="scan-bar">
+      <span class="status-text" id="scanStatus">Last scan: today, 06:40 · 11 sources checked</span>
+      <button class="action" id="runScanBtn">Run scan</button>
+    </div>
+
+    <div id="findingsList"></div>
+  </div>
+
+  <!-- ===================== PROPOSAL ===================== -->
+  <div class="panel" id="panel-proposal" style="display:none;">
+    <div class="panel-head">
+      <h2>Proposal generator</h2>
+      <span class="sub" id="proposalSub">0 findings selected</span>
+    </div>
+
+    <div id="proposalDoc" class="doc"></div>
+
+    <div class="footer-note">
+      <span>Generated from verified findings only — every claim below traces to a snapshot excerpt.</span>
+      <button class="ghost" id="exportBtn">Export .md</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.getElementById('dateStamp').textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'2-digit',year:'numeric'});
+
+// ---------- DATA ----------
+const competitors = [
+  {
+    name: "Flowbase",
+    status: "3 sources · checked 06:40",
+    sources: [
+      {tag:"Pricing", url:"flowbase.io/pricing", checked:"06:40 today"},
+      {tag:"Changelog", url:"flowbase.io/changelog", checked:"06:40 today"},
+      {tag:"Blog", url:"blog.flowbase.io", checked:"06:38 today"},
+    ]
+  },
+  {
+    name: "Taskwave",
+    status: "4 sources · checked 06:41",
+    sources: [
+      {tag:"Pricing", url:"taskwave.com/plans", checked:"06:41 today"},
+      {tag:"Changelog", url:"taskwave.com/updates", checked:"06:41 today"},
+      {tag:"GitHub", url:"github.com/taskwave/core", checked:"06:39 today"},
+      {tag:"Blog", url:"taskwave.com/blog", checked:"06:37 today"},
+    ]
+  },
+  {
+    name: "Cadence",
+    status: "4 sources · checked 06:42",
+    sources: [
+      {tag:"Pricing", url:"cadence.app/pricing", checked:"06:42 today"},
+      {tag:"Product", url:"cadence.app/product", checked:"06:42 today"},
+      {tag:"Changelog", url:"cadence.app/log", checked:"06:40 today"},
+      {tag:"Blog", url:"cadence.app/journal", checked:"06:36 today"},
+    ]
+  }
+];
+
+const findingsPool = [
+  {
+    id:"f1", confidence:"high",
+    title:"Flowbase raised Team plan pricing from $12 to $15 per seat",
+    competitor:"Flowbase", source:"Pricing page", date:"today, 06:40",
+    excerpt:'"Team — $15/seat/mo" replaces prior snapshot value "Team — $12/seat/mo". Hash mismatch confirmed against Aug 30 snapshot.',
+    cite:"flowbase.io/pricing · snapshot #a91f3c",
+    trail:[true,true,true],
+    recommendation:"Consider whether DevTrack's own Team tier still undercuts Flowbase, or if this gap should be called out in positioning."
+  },
+  {
+    id:"f2", confidence:"high",
+    title:"Taskwave shipped AI-generated standup summaries",
+    competitor:"Taskwave", source:"Changelog + repo", date:"today, 06:41",
+    excerpt:'Changelog entry "v4.2 — Daily summaries, generated automatically from task activity" corroborated by merged PR #1188 in taskwave/core adding a summary-generation module.',
+    cite:"taskwave.com/updates · github.com/taskwave/core#1188",
+    trail:[true,true,true],
+    recommendation:"Flag as a candidate feature gap — two independent sources corroborate this shipped, not just announced."
+  },
+  {
+    id:"f3", confidence:"medium",
+    title:"Cadence appears to be testing a usage-based pricing tier",
+    competitor:"Cadence", source:"Blog post", date:"today, 06:36",
+    excerpt:'Blog post references "a new way to pay as your team grows" without publishing tier numbers on the pricing page yet. Product page shows no matching update.',
+    cite:"cadence.app/journal · snapshot #77bd21",
+    trail:[true,true,false],
+    recommendation:"Worth a note, not a rewrite — critic node could not corroborate against pricing or product pages. Re-check next scan."
+  },
+  {
+    id:"f4", confidence:"low",
+    title:"Possible enterprise SSO support hinted at by Cadence",
+    competitor:"Cadence", source:"Blog post", date:"today, 06:36",
+    excerpt:'Single blog sentence mentions "enterprise-ready authentication" with no supporting changelog, pricing, or product-page evidence found in this scan.',
+    cite:"cadence.app/journal · unsubstantiated",
+    trail:[true,false,false],
+    recommendation:"Do not include in proposal — critic node rejected due to lack of corroborating evidence."
+  }
+];
+
+// ---------- TABS ----------
+const tabs = document.querySelectorAll('.tab');
+const panels = {
+  sources: document.getElementById('panel-sources'),
+  findings: document.getElementById('panel-findings'),
+  proposal: document.getElementById('panel-proposal'),
+};
+tabs.forEach(t=>{
+  t.addEventListener('click', ()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    Object.values(panels).forEach(p=>p.style.display='none');
+    panels[t.dataset.tab].style.display='block';
+    if(t.dataset.tab==='proposal') renderProposal();
+  });
+});
+
+// ---------- SOURCES ----------
+const competitorList = document.getElementById('competitorList');
+competitors.forEach((c,i)=>{
+  const div = document.createElement('div');
+  div.className = 'competitor' + (i===0 ? ' open' : '');
+  div.innerHTML = `
+    <div class="competitor-head">
+      <span class="name">${c.name}</span>
+      <span style="display:flex;align-items:center;gap:12px;">
+        <span class="status">${c.status}</span>
+        <span class="caret">${i===0?'▾':'▸'}</span>
+      </span>
+    </div>
+    <div class="sources-list">
+      ${c.sources.map(s=>`
+        <div class="source-row">
+          <span class="source-tag">${s.tag}</span>
+          <span class="source-url">${s.url}</span>
+          <span class="source-checked">${s.checked}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  div.querySelector('.competitor-head').addEventListener('click', ()=>{
+    div.classList.toggle('open');
+    div.querySelector('.caret').textContent = div.classList.contains('open') ? '▾' : '▸';
+  });
+  competitorList.appendChild(div);
+});
+
+// ---------- FINDINGS ----------
+const findingsList = document.getElementById('findingsList');
+const findingsSub = document.getElementById('findingsSub');
+const scanStatus = document.getElementById('scanStatus');
+const runScanBtn = document.getElementById('runScanBtn');
+const scanCountLabel = document.getElementById('scanCountLabel');
+let selected = new Set(['f1','f2']);
+let scanRuns = 2;
+
+function stampLabel(c){
+  if(c==='high') return 'HIGH CONFIDENCE';
+  if(c==='medium') return 'MEDIUM — UNCONFIRMED';
+  return 'LOW — UNSUBSTANTIATED';
+}
+const trailLabels = ['Context research','Impact analysis','Critic / verifier'];
+
+function renderFindings(animate){
+  findingsList.innerHTML = '';
+  findingsPool.forEach((f, idx)=>{
+    const card = document.createElement('div');
+    card.className = 'finding';
+    if(animate) card.style.animationDelay = (idx*0.09)+'s';
+    else card.style.animation = 'none', card.style.opacity=1;
+    card.innerHTML = `
+      <div class="finding-top">
+        <div>
+          <div class="finding-title">${f.title}</div>
+          <div class="finding-meta">${f.competitor} · ${f.source} · ${f.date}</div>
+        </div>
+        <span class="stamp ${f.confidence}">${stampLabel(f.confidence)}</span>
+      </div>
+      <div class="evidence">
+        ${f.excerpt}
+        <span class="cite">${f.cite}</span>
+      </div>
+      <div class="trail">
+        ${f.trail.map((pass,i)=>`
+          <span class="step"><span class="dot ${pass?'':'fail'}"></span>${trailLabels[i]}</span>
+          ${i<2?'<span class="arrow">→</span>':''}
+        `).join('')}
+      </div>
+      <div class="finding-foot">
+        <label class="include-toggle">
+          <input type="checkbox" data-id="${f.id}" ${selected.has(f.id) && f.confidence!=='low' ? 'checked':''} ${f.confidence==='low'?'disabled':''}>
+          ${f.confidence==='low' ? 'excluded — insufficient evidence' : 'include in proposal'}
+        </label>
+      </div>
+    `;
+    findingsList.appendChild(card);
+  });
+
+  findingsList.querySelectorAll('input[type=checkbox]').forEach(box=>{
+    box.addEventListener('change', ()=>{
+      if(box.checked) selected.add(box.dataset.id);
+      else selected.delete(box.dataset.id);
+    });
+  });
+
+  const highCount = findingsPool.filter(f=>f.confidence==='high').length;
+  const lowCount = findingsPool.filter(f=>f.confidence==='low').length;
+  findingsSub.textContent = `${highCount+ (findingsPool.length-highCount-lowCount)} verified · ${lowCount} unsubstantiated`;
+}
+renderFindings(false);
+
+runScanBtn.addEventListener('click', ()=>{
+  runScanBtn.disabled = true;
+  runScanBtn.textContent = 'Scanning…';
+  scanStatus.textContent = 'Scanning 11 sources — deterministic diff, then agent verification…';
+  setTimeout(()=>{
+    scanRuns++;
+    scanCountLabel.textContent = scanRuns;
+    const now = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    scanStatus.textContent = `Last scan: today, ${now} · 11 sources checked`;
+    runScanBtn.disabled = false;
+    runScanBtn.textContent = 'Run scan';
+    renderFindings(true);
+  }, 900);
+});
+
+// ---------- PROPOSAL ----------
+const proposalDoc = document.getElementById('proposalDoc');
+const proposalSub = document.getElementById('proposalSub');
+
+function renderProposal(){
+  const chosen = findingsPool.filter(f => selected.has(f.id) && f.confidence!=='low');
+  proposalSub.textContent = `${chosen.length} finding${chosen.length===1?'':'s'} selected`;
+
+  if(chosen.length===0){
+    proposalDoc.innerHTML = `<p class="empty">No verified findings selected yet. Check a box on the Findings tab to build a proposal from it.</p>`;
+    return;
+  }
+
+  proposalDoc.innerHTML = `
+    <h3>Response to competitive moves — ${new Date().toLocaleDateString('en-US',{month:'long', day:'numeric', year:'numeric'})}</h3>
+    <div class="doc-sub">DevTrack workspace · generated from ${chosen.length} evidence-grounded finding${chosen.length===1?'':'s'}</div>
+
+    <section>
+      <h4>Summary</h4>
+      <p>This scan surfaced ${chosen.length} change${chosen.length===1?'':'s'} across tracked competitors that pass verification. Each item below is traceable to a source snapshot; nothing here is inferred beyond what the excerpt supports.</p>
+    </section>
+
+    ${chosen.map((f,i)=>`
+      <section>
+        <h4>${String(i+1).padStart(2,'0')} — ${f.competitor}</h4>
+        <p>${f.title}. ${f.excerpt}</p>
+        <p class="rec">Recommended action: ${f.recommendation}</p>
+      </section>
+    `).join('')}
+  `;
+}
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const chosen = findingsPool.filter(f => selected.has(f.id) && f.confidence!=='low');
+  let md = `# Response to competitive moves\n\n`;
+  chosen.forEach((f,i)=>{
+    md += `## ${i+1}. ${f.title}\n\n${f.excerpt}\n\n_Source: ${f.cite}_\n\n**Recommended action:** ${f.recommendation}\n\n`;
+  });
+  const blob = new Blob([md], {type:'text/markdown'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'proposal.md';
+  a.click();
+});
+</script>
+</body>
+</html>
