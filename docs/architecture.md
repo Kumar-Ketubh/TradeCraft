@@ -417,26 +417,53 @@ Source URLs, timestamps, snapshots, run information, and evidence should be reta
 
 | Component | Current Status |
 |---|---|
-| Frontend | Next.js / React |
-| Backend API | **TBD — FastAPI or Node.js** |
-| Database | PostgreSQL |
-| Agent Orchestration | LangGraph |
-| Source Ingestion | HTTP + HTML/RSS parsers |
+| Frontend | **Vite + React (JavaScript)** — Phase 1 scaffold & Phase 2 Auth/CRUD UI complete |
+| Backend API | **FastAPI + Python** — Finalized backend framework |
+| Database | **PostgreSQL + SQLAlchemy ORM** |
+| Database Migrations | **Alembic** |
+| Security & Auth | **JWT (pyjwt) + bcrypt password hashing** |
+| Agent Orchestration | LangGraph (planned — Phase 5) |
+| Source Ingestion | HTTP + HTML/RSS parsers (planned — Phase 3) |
 | LLM Provider | **TBD — Free/Open-source/Free-tier** |
 | Scheduler | Later / Optional |
 
 ## 16. Architecture Status
 
-**Status: Initial Architecture Design**
+**Status: Phase 2 — Core Management Complete**
 
-This document represents the initial architecture derived from the project requirements.
+---
 
-The following decisions remain open:
+## 17. Phase 2 Implementation Status
 
-- Final backend technology: FastAPI or Node.js
-- Exact LLM provider/model
-- Whether public GitHub monitoring is included in the MVP or treated as a stretch source
-- Whether browser automation is required for any selected demo competitor
-- Final proposal export format
+### What is implemented
 
-These decisions will be finalized during implementation and documented through subsequent GitHub commits.
+| Component | Status | Notes |
+|---|---|---|
+| Backend Architecture | ✅ Done | FastAPI + Python + SQLAlchemy ORM |
+| Authentication | ✅ Done | JWT access tokens + bcrypt hashing (`/auth/register`, `/auth/login`, `/auth/me`) |
+| Entity Relationships | ✅ Done | `User` ➔ `Workspace` ➔ `Competitor` ➔ `Source` |
+| Database Migrations | ✅ Done | Alembic migration scripts |
+| Core REST APIs | ✅ Done | CRUD endpoints for Workspaces, Competitors & Sources with multi-tenant isolation |
+| Backend Unit Tests | ✅ Done | Pytest test suite covering auth, workspaces, competitors & sources (12 tests) |
+| Frontend Integration | ✅ Done | React + Vite UI integrated with JWT Auth, Workspace switcher, Competitor CRUD & Source manager |
+| System Health Checks | ✅ Done | `/health` checks backend + DB connection status |
+
+### What is NOT yet implemented (Future Phases)
+
+| Component | Phase |
+|---|---|
+| Source adapters / scraping | Phase 3 |
+| Snapshot storage | Phase 3 |
+| Change detection | Phase 4 |
+| LangGraph agentic workflow | Phase 5 |
+| Context research & Impact analysis | Phase 5 |
+| Critic / evidence verification | Phase 6 |
+| Findings dashboard & AI reports | Phase 6 |
+| Proposal generation | Phase 7 |
+
+### Finalized Decisions
+
+- **Backend framework:** FastAPI + Python (Finalized)
+- **Database ORM:** SQLAlchemy with Alembic migrations
+- **Authentication:** Standard JWT Bearer token authentication with bcrypt password hashing
+
