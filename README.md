@@ -331,11 +331,14 @@ The architecture will:
 ## Repository Structure
 
 ```text
-.
-├── frontend/
-├── backend/
-├── database/
+TradeCraft/
+├── frontend/          React + Vite frontend scaffold
+├── backend/           Backend scaffold (FastAPI — tech TBD)
+├── database/          PostgreSQL schema and setup notes
 ├── docs/
+│   ├── architecture.md
+│   ├── system-architecture.png
+│   └── progress-journal.md
 ├── .env.example
 ├── .gitignore
 └── README.md
@@ -343,10 +346,81 @@ The architecture will:
 
 ## Project Status
 
-**Current stage: Phase 1 — Project Foundation**
+**Current stage: Phase 2 — Core Management**
 
-The current development focus is establishing the project architecture, frontend/backend scaffolding, database setup, and basic health checks.
+### Implemented
+
+| Component | Status |
+|---|---|
+| Backend Framework | ✅ FastAPI + Python (Finalized) |
+| Authentication | ✅ JWT tokens + bcrypt password hashing |
+| Database Models & ORM | ✅ PostgreSQL + SQLAlchemy ORM (User, Workspace, Competitor, Source) |
+| Database Migrations | ✅ Alembic migration scripts |
+| Core Management APIs | ✅ REST CRUD for Workspaces, Competitors & Sources |
+| Backend Test Suite | ✅ Pytest suite covering auth, workspaces, competitors & sources (12 tests) |
+| Frontend Integration | ✅ React + Vite with JWT Auth, Workspace selector, Competitor & Source manager |
+| System Health Checks | ✅ `/health` returns FastAPI + DB status |
+
+### Planned (Future Phases)
+
+| Component | Phase |
+|---|---|
+| Web scraping / source collection | Phase 3 |
+| Snapshot storage | Phase 3 |
+| Change detection & diff classification | Phase 4 |
+| Context research & Impact analysis | Phase 5 |
+| AI agentic workflow (LangGraph) | Phase 5 |
+| Critic / evidence verification | Phase 6 |
+| Findings dashboard & AI reports | Phase 6 |
+| Proposal generation | Phase 7 |
+
+## How to Run
+
+### 1. Database Setup
+
+Ensure PostgreSQL is running locally, then create the database and run migrations:
+
+```bash
+psql -U postgres -c "CREATE DATABASE tradecraft;"
+
+cd backend
+cp .env.example .env  # configure your DATABASE_URL and JWT_SECRET
+source venv/bin/activate
+alembic upgrade head
+```
+
+### 2. Backend Server
+
+```bash
+cd backend
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --port 8001 --reload
+```
+
+- API Base URL: `http://localhost:8001`
+- Interactive API Docs: `http://localhost:8001/docs`
+- Health check: `GET http://localhost:8001/health`
+
+### 3. Run Backend Tests
+
+```bash
+cd backend
+source venv/bin/activate
+pytest -v
+```
+
+### 4. Frontend Application
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Runs at: `http://localhost:5173` or `http://localhost:5174`
 
 ## Project Positioning
 
 > **An agentic competitive-intelligence platform that monitors competitor changes, investigates their significance, verifies evidence, and generates actionable insights and project proposals.**
+

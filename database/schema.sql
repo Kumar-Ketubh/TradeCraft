@@ -1,0 +1,34 @@
+-- database/schema.sql
+--
+-- TradeCraft Database Schema — Phase 1 Placeholder
+--
+-- STATUS: Phase 1 — Foundation only.
+-- The full schema will be designed and implemented in Phase 2.
+--
+-- This file currently only enables the uuid-ossp extension,
+-- which will be needed when real tables are created.
+--
+-- DO NOT run this against a production database.
+
+-- Enable UUID generation (used in future entity tables)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PLANNED TABLES (Phase 2+)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- The following tables are PLANNED but NOT yet created.
+-- They are listed here for documentation purposes only.
+--
+-- users                - User accounts
+-- workspaces           - Product / project context
+-- competitors          - Competitor profiles
+-- sources              - Configured public URLs per competitor
+-- snapshots            - Fetched source content history
+-- analysis_runs        - Individual scan executions
+-- changes              - Detected source changes
+-- findings             - Validated competitive intelligence
+-- evidence             - Source-backed supporting evidence
+-- proposals            - Generated project proposals
+--
+-- Full ER diagram and table definitions will be added in Phase 2.
+-- ─────────────────────────────────────────────────────────────────────────────
