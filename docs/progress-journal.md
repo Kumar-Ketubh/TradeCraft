@@ -4,105 +4,83 @@
 
 **Date:** September 2026
 
----
-
 ### Objectives
 
-Implement the foundational user management, multi-tenant workspace context, competitor management, and source URL configuration prior to introducing automated scraping and AI intelligence workflows in later phases.
-
-Phase 2 scope:
-- Finalize backend technology as FastAPI + Python
-- Implement user authentication with JWT access tokens and bcrypt password hashing
-- Model entity hierarchy: `User` ➔ `Workspace` ➔ `Competitor` ➔ `Source` in PostgreSQL with SQLAlchemy ORM
-- Database migrations with Alembic
-- REST CRUD APIs for Workspaces, Competitors, and Sources with strict ownership enforcement
-- Pytest suite covering authentication and CRUD isolation
-- Update React frontend to replace mock data with live FastAPI + PostgreSQL API integration
-
----
+- Finalize backend as FastAPI + Python
+- User authentication: JWT + bcrypt
+- Entity hierarchy: `User` → `Workspace` → `Competitor` → `Source`
+- Database migrations (Alembic)
+- REST CRUD APIs with ownership enforcement
+- Pytest coverage for auth and CRUD isolation
+- Frontend integration with live APIs
 
 ### Work Completed
 
-#### Backend Architecture & Authentication
-- Finalized FastAPI + Python as the backend stack
-- Created modular package layout (`backend/app/` with core, db, models, schemas, routers, dependencies)
-- Implemented `/auth/register`, `/auth/login`, and `/auth/me` endpoints
-- Passwords hashed securely using `bcrypt`
-- Signed JWT access tokens issued upon successful authentication and verified via FastAPI HTTPBearer dependencies
+**Backend Architecture & Authentication**
+- FastAPI + Python, modular layout (`backend/app/core`, `db`, `models`, `schemas`, `routers`, `dependencies`)
+- `/auth/register`, `/auth/login`, `/auth/me` endpoints
+- bcrypt password hashing, JWT token signing and verification
 
-#### Database & Models
-- Built SQLAlchemy ORM models: `User`, `Workspace`, `Competitor`, `Source` with cascading deletes and foreign keys
-- Set up Alembic migration framework and generated initial migration script (`5110aac07da3`)
-- Added lazy database engine initialization with SQLite fallback for offline development/testing
+**Database & Models**
+- SQLAlchemy ORM: `User`, `Workspace`, `Competitor`, `Source` with cascading deletes
+- Alembic migrations (initial: `5110aac07da3`)
+- SQLite fallback for offline dev/testing
 
-#### REST Endpoints & Multi-Tenant Authorization
-- `Workspaces`: `POST /workspaces`, `GET /workspaces`, `GET /workspaces/{id}`, `PUT /workspaces/{id}`, `DELETE /workspaces/{id}`
-- `Competitors`: `POST /workspaces/{ws_id}/competitors`, `GET /workspaces/{ws_id}/competitors`, `GET /workspaces/{ws_id}/competitors/{id}`, `PUT`, `DELETE`
-- `Sources`: `POST /competitors/{c_id}/sources`, `GET /competitors/{c_id}/sources`, `GET /competitors/{c_id}/sources/{id}`, `PUT`, `DELETE`
-- Enforced strict authorization: users can only view, edit, or delete entities within workspaces they own
+**REST Endpoints**
+- Workspaces: `POST`, `GET`, `GET/:id`, `PUT/:id`, `DELETE/:id`
+- Competitors: `POST /workspaces/:ws_id/competitors`, full CRUD
+- Sources: `POST /competitors/:c_id/sources`, full CRUD
+- Strict multi-tenant authorization enforced per endpoint
 
-#### Testing
-- Created pytest suite (`backend/tests/`) using in-memory SQLite and FastAPI TestClient
-- Added 12 unit tests covering registration, duplicate email handling, login validation, protected endpoints, workspace CRUD, competitor CRUD, source CRUD, and cross-user isolation checks
-- All 12 unit tests passing (100% pass rate)
+**Testing**
+- 12 pytest tests covering registration, login, CRUD, cross-user isolation
+- In-memory SQLite + FastAPI TestClient
+- 100% pass rate
 
-#### Frontend Integration
-- Built `api.js` client wrapper supporting JWT authorization headers
-- Created `AuthModal.jsx` component for Login and Registration
-- Created `WorkspaceSelector.jsx` for selecting active workspace and creating new workspaces
-- Created `SourceManager.jsx` for managing competitor source URLs, categories (`website`, `product_page`, `pricing`, `blog`, `documentation`, `rss`, `news`, `other`), and toggling monitoring
-- Updated `Competitors.jsx` to fetch and mutate real backend data
-- Updated `Dashboard.jsx` to display live health status and workspace summary stats
-
----
+**Frontend**
+- `api.js` JWT client wrapper
+- `AuthModal.jsx`, `WorkspaceSelector.jsx`, `SourceManager.jsx`
+- Updated `Competitors.jsx` and `Dashboard.jsx` to consume live APIs
 
 ### Technical Decisions
 
-| Decision | Choice | Reason |
-|---|---|---|
-| Backend Framework | FastAPI + Python | Finalized decision for native Python AI ecosystem compatibility |
-| ORM | SQLAlchemy 2.0 | Standard Python ORM with declarative models and relation mapping |
-| Database Migrations | Alembic | Standard migration tool for SQLAlchemy |
-| Authentication | JWT + bcrypt | Secure, stateless authentication suitable for API backend |
-| Token Storage | LocalStorage | Simple, clean client-side token storage for prototype stage |
+| Decision | Choice |
+|---|---|
+| Backend | FastAPI + Python |
+| ORM | SQLAlchemy 2.0 |
+| Migrations | Alembic |
+| Auth | JWT + bcrypt |
+| Token Storage | LocalStorage |
 
----
+### Known Issues & Fixes
 
-### Problems / Challenges
+1. **psycopg2 + Python 3.13 ARM build failure**
+   - Switched to `psycopg2-binary` pre-compiled wheels
 
-1. **Python 3.13 psycopg2 C extension build failure:**
-   - *Problem:* `psycopg2==2.9.9` wheel failed to compile from source on macOS ARM with Python 3.13 due to removed C API functions.
-   - *Solution:* Switched to `psycopg2-binary==2.9.13` pre-compiled wheels in `requirements.txt`.
-
-2. **Passlib + Bcrypt 5.0 compatibility issue:**
-   - *Problem:* `passlib` trapped `ValueError: password cannot be longer than 72 bytes` during internal initialization checks on modern bcrypt versions.
-   - *Solution:* Switched to direct `bcrypt` module calls in `security.py` (`bcrypt.hashpw` and `bcrypt.checkpw`).
-
----
+2. **passlib + bcrypt 5.0 incompatibility**
+   - Replaced passlib with direct `bcrypt` module calls
 
 ### Current Status
 
 | Component | Status |
 |---|---|
-| Backend framework | ✅ Finalized (FastAPI) |
-| User authentication | ✅ Done (JWT + bcrypt) |
+| Backend framework | ✅ Done |
+| Auth (JWT + bcrypt) | ✅ Done |
 | Workspace CRUD | ✅ Done |
 | Competitor CRUD | ✅ Done |
-| Source configuration | ✅ Done |
-| Database ORM & Migrations | ✅ Done (SQLAlchemy + Alembic) |
-| Backend unit test suite | ✅ Done (12 tests passing) |
+| Source config | ✅ Done |
+| DB ORM & migrations | ✅ Done |
+| Backend tests | ✅ Done (12/12 passing) |
 | Frontend API integration | ✅ Done |
-| Web scraping / source adapters | 🔲 Phase 3 |
-| Change detection | 🔲 Phase 4 |
-| AI / LangGraph workflow | 🔲 Phase 5 |
+| Web scraping | ⬜ Phase 3 |
+| Change detection | ⬜ Phase 4 |
+| AI / LangGraph | ⬜ Phase 5 |
 
----
+### Next Week (Phase 3)
 
-### Next Week's Plan (Phase 3)
-
-- Implement source collector adapters (HTTP fetching, HTML text extraction, RSS parsing)
-- Build snapshot storage system to retain fetched source content history
-- Establish initial scan execution trigger mechanism
+- Source collector adapters (HTTP, HTML parsing, RSS)
+- Snapshot storage system
+- Scan execution trigger mechanism
 
 ---
 
@@ -110,84 +88,51 @@ Phase 2 scope:
 
 **Date:** September 2026
 
----
-
 ### Objectives
 
-Establish the foundational project structure so future phases can build on a clean, well-documented base.
-
-Phase 1 scope:
 - Frontend scaffold (React + Vite)
-- Backend scaffold (minimal health check server)
-- Database setup (PostgreSQL connection configuration)
+- Backend scaffold (health check server)
+- PostgreSQL setup
 - Architecture documentation
 - Health checks
 
----
-
 ### Work Completed
 
-#### Frontend
-- Created Vite + React + JavaScript project (`frontend/`)
-- Implemented four main pages: Dashboard, Competitors, Findings, Proposal
-- Simple sidebar navigation (no React Router — state-based for simplicity)
-- Mock data centralised in `src/data/mockData.js`
-- Dashboard displays stat cards, empty findings state, and live system status
-- System Status section polls `/health` on load and reflects real backend/DB status
-- Competitors page lists 6 mock brands, each with multiple monitored source URLs
-- Findings page shows an intentional empty state
-- Proposal page shows the planned workflow diagram with a disabled Generate button
-- Simple, clean CSS — no component libraries
+**Frontend**
+- Vite + React project with 4 pages: Dashboard, Competitors, Findings, Proposal
+- Sidebar navigation (state-based, no React Router)
+- Mock data in `src/data/mockData.js`
+- Dashboard: stat cards, empty findings, live system status
+- Competitors: 6 mock brands with monitored URLs
+- System Status polls `/health` on load
 
-#### Backend
-- Created minimal FastAPI scaffold (`backend/`)
-- `GET /health` endpoint returns `{ backend, database, ai_workflow, phase }`
-- Database reachability check via `psycopg2` (reads env vars, attempts connect + close)
-- CORS enabled for local development
-- `requirements.txt` with pinned dependencies
-- `.env.example` template (no credentials committed)
-- `backend/README.md` with setup instructions
+**Backend**
+- FastAPI scaffold with `GET /health` endpoint
+- Returns `{ backend, database, ai_workflow, phase }`
+- Database reachability check via psycopg2
+- CORS enabled for local dev
+- `.env.example` template
 
-#### Database
-- PostgreSQL chosen as the database
-- Connection configuration via environment variables (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`)
-- `database/schema.sql` placeholder — enables `uuid-ossp` extension, documents planned tables
-- `database/README.md` with setup instructions
+**Database**
+- PostgreSQL with env var configuration
+- `database/schema.sql` with planned tables
+- UUID extension enabled
 
-#### Documentation
-- `docs/architecture.md` updated with Phase 1 status section
-- `docs/progress-journal.md` created (this file)
-- Root `.env.example` added
-- Root `.gitignore` added
-
----
+**Documentation**
+- `docs/architecture.md` updated
+- `docs/progress-journal.md` created
+- `.env.example` and `.gitignore` added
 
 ### Technical Decisions
 
-| Decision | Choice | Reason |
-|---|---|---|
-| Frontend framework | React + Vite | Specified in project requirements |
-| Backend scaffold | FastAPI (temporary) | Simpler to scaffold quickly; final choice TBD |
-| Database | PostgreSQL | Specified in project requirements |
-| CSS | Vanilla CSS | Avoid component library dependency at prototype stage |
-| Client-side routing | State-based (no React Router) | Simpler for a 4-page prototype |
-| DB driver | psycopg2-binary | Standard PostgreSQL Python driver |
-
----
-
-### Problems / Challenges
-
-- None major in Phase 1. The frontend and backend are intentionally minimal.
-
----
-
-### Solutions
-
-- Kept all files simple enough for a student team to explain in a project review.
-- Used `AbortSignal.timeout(4000)` on the health fetch so the frontend does not hang if the backend is offline.
-- Backend returns `"not_connected"` for AI Workflow explicitly, making the Phase 1 boundary clear in the UI.
-
----
+| Decision | Choice |
+|---|---|
+| Frontend | React + Vite |
+| Backend | FastAPI |
+| Database | PostgreSQL |
+| CSS | Vanilla CSS |
+| Routing | State-based (no React Router) |
+| DB driver | psycopg2-binary |
 
 ### Current Status
 
@@ -195,10 +140,10 @@ Phase 1 scope:
 |---|---|
 | Frontend scaffold | ✅ Done |
 | Backend scaffold | ✅ Done |
-| Database setup | ✅ Done (config only) |
+| Database setup | ✅ Done |
 | Health checks | ✅ Done |
-| Architecture docs | ✅ Done |
-| Authentication | ✅ Done |
-| Competitor monitoring | 🔲 Not started |
-| Change detection | 🔲 Not started |
-| AI / LangGraph workflow | 🔲 Not started |
+| Docs | ✅ Done |
+| Auth | ✅ Done |
+| Competitor monitoring | ⬜ Not started |
+| Change detection | ⬜ Not started |
+| AI workflow | ⬜ Not started |
