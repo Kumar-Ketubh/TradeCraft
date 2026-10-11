@@ -21,75 +21,61 @@ The system consists of six major layers:
 
 ## 3. Backend Technology Decision
 
-The backend technology is currently under evaluation.
+The backend technology is finalized as **Python + FastAPI**.
 
-### Candidate Options
+### Key Rationale
 
-- Python + FastAPI
-- Node.js + suitable API framework
-
-The final backend technology will be selected based on:
-
-- LangGraph and agent workflow integration
-- LLM ecosystem compatibility
-- Development speed
-- Team familiarity
-- Testing requirements
-- Deployment considerations
-- Frontend and database integration
-
-Until the decision is finalized, this component is referred to as the **Backend API**.
+- Native compatibility with Python AI/ML and agent ecosystems (LangGraph, NumPy, Difflib, BeautifulSoup4, Feedparser).
+- High-performance asynchronous request handling with Starlette/Uvicorn.
+- Automatic OpenAPI/Swagger documentation generation.
+- Strong type validation via Pydantic v2.
+- Clean database integration with SQLAlchemy 2.0 ORM and Alembic migrations.
 
 ## 4. Frontend Layer
 
-The frontend provides the user-facing web application.
+The frontend provides the user-facing responsive web application.
 
 ### Responsibilities
 
-- Authentication interface
-- Workspace management
-- Competitor management
-- Source configuration
-- Scan controls
-- Findings dashboard
-- Evidence visualization
-- Proposal editing
-- Proposal export/copy workflow
+- Authentication and multi-tenant workspace context
+- Competitor management and public source configuration
+- Concurrent scan controls and live execution indicators
+- Detected changes intelligence feed with meaningfulness filters
+- Interactive line-by-line unified diff viewer (`DiffViewer.jsx`)
+- Historical snapshot inspector (`SnapshotHistoryModal.jsx`)
+- Real-time dark/light color mode toggle and notification center
 
 ### Technology
 
 ```text
-Next.js
-React
+React 19 + Vite
+Pure Utility CSS (design tokens & variables)
+Lucide React icons
 ```
 
 ## 5. Backend API Layer
 
-The backend acts as the main application layer between the frontend, database, source adapters, and agentic workflow.
+The backend acts as the core application engine connecting the React frontend, PostgreSQL database, source adapters, and diffing engine.
 
 ### Responsibilities
 
-- Authentication and authorization
-- Request validation
-- Workspace management
-- Competitor management
-- Source management
-- Scan orchestration
-- Database interaction
-- Agent workflow integration
-- REST API endpoints
+- Multi-tenant JWT authentication and ownership enforcement
+- Request validation and serialization with Pydantic schemas
+- Workspace, competitor, and source CRUD management
+- Asynchronous scan orchestration with bounded concurrency
+- Source content normalization and deterministic SHA-256 hashing
+- Line-by-line unified diff generation and meaningfulness classification
+- REST API endpoints for scans, snapshots, and detected changes
 
-### Technology Status
+### Technology Stack
 
 ```text
-Backend API: TBD
-
-Candidate:
-- Python + FastAPI
-- Node.js + suitable API framework
+FastAPI + Python 3.13
+SQLAlchemy 2.0 ORM + Alembic
+PostgreSQL (production) / SQLite (offline fallback & testing)
+HTTPX + BeautifulSoup4 + Feedparser (Adapters)
+Difflib (Diff Engine)
 ```
-
-The frontend communicates with the backend through a stable API boundary so that the backend implementation can be changed without redesigning the overall application.
 
 ## 6. Agentic Intelligence Layer
 
@@ -321,33 +307,52 @@ The exact provider and model will be finalized during implementation.
 
 ## 12. API Boundary
 
-The frontend communicates with the backend through a stable REST API boundary.
+The frontend communicates with the backend through a stable REST API boundary enforcing JWT multi-tenant isolation.
 
-### Planned MVP Endpoints
+### Implemented REST Endpoints
 
 ```text
+# Authentication
+POST   /auth/register
 POST   /auth/login
+GET    /auth/me
 
+# Workspaces
 POST   /workspaces
 GET    /workspaces
+GET    /workspaces/{id}
+PUT    /workspaces/{id}
+DELETE /workspaces/{id}
 
-POST   /workspaces/{id}/competitors
-POST   /competitors/{id}/sources
+# Competitors
+POST   /workspaces/{ws_id}/competitors
+GET    /workspaces/{ws_id}/competitors
+GET    /workspaces/{ws_id}/competitors/{id}
+PUT    /workspaces/{ws_id}/competitors/{id}
+DELETE /workspaces/{ws_id}/competitors/{id}
 
+# Sources
+POST   /competitors/{c_id}/sources
+GET    /competitors/{c_id}/sources
+GET    /competitors/{c_id}/sources/{id}
+PUT    /competitors/{c_id}/sources/{id}
+DELETE /competitors/{c_id}/sources/{id}
+
+# Scans & Snapshots (Phase 3)
 POST   /workspaces/{id}/scan
+POST   /competitors/{id}/scan
+GET    /workspaces/{id}/scans
+GET    /scans/{id}
+GET    /sources/{id}/snapshots
 
-GET    /workspaces/{id}/runs
-GET    /runs/{id}
+# Detected Changes & Diffing (Phase 4)
+GET    /workspaces/{id}/changes
+GET    /changes/{id}
+GET    /scans/{id}/changes
 
-GET    /findings/{id}
-POST   /findings/{id}/dismiss
-
-POST   /proposals
-GET    /proposals/{id}
-PUT    /proposals/{id}
+# System Health
+GET    /health
 ```
-
-The endpoint implementation may vary depending on the final backend technology choice.
 
 ## 13. Primary User Workflow
 
@@ -356,27 +361,27 @@ The endpoint implementation may vary depending on the final backend technology c
         ↓
 2. Add competitors
         ↓
-3. Configure public sources
+3. Configure public sources (HTML / RSS)
         ↓
-4. Run scan
+4. Run scan (on-demand concurrent collection)
         ↓
-5. Fetch and snapshot sources
+5. Fetch and snapshot sources (deterministic SHA-256 hash)
         ↓
-6. Detect changes
+6. Detect changes (line-by-line unified diff calculation)
         ↓
-7. Classify meaningful changes
+7. Classify meaningful changes (noise filter vs substantive shift)
         ↓
-8. Research supporting context
+8. Research supporting context (Phase 5)
         ↓
-9. Analyze likely impact
+9. Analyze likely impact (Phase 5)
         ↓
-10. Verify evidence
+10. Verify evidence (Phase 6)
         ↓
 11. Display validated findings
         ↓
 12. Select finding
         ↓
-13. Generate project proposal
+13. Generate project proposal (Phase 7)
         ↓
 14. Edit proposal
         ↓
@@ -407,63 +412,60 @@ Deterministic processing such as source comparison, hashing, and trivial-change 
 
 ### Minimal Infrastructure
 
-The MVP should avoid unnecessary infrastructure such as microservices, Kubernetes, or distributed task systems unless a concrete requirement emerges.
+The MVP avoids unnecessary infrastructure such as microservices, Kubernetes, or distributed task queues unless a concrete requirement emerges.
 
 ### Reproducibility
 
-Source URLs, timestamps, snapshots, run information, and evidence should be retained so that findings can be traced back to their origin.
+Source URLs, timestamps, snapshots, run information, and evidence are retained so that findings can be traced back to their exact origin.
 
 ## 15. Current Technology Decisions
 
 | Component | Current Status |
 |---|---|
-| Frontend | **Vite + React (JavaScript)** — Phase 1 scaffold & Phase 2 Auth/CRUD UI complete |
-| Backend API | **FastAPI + Python** — Finalized backend framework |
-| Database | **PostgreSQL + SQLAlchemy ORM** |
-| Database Migrations | **Alembic** |
-| Security & Auth | **JWT (pyjwt) + bcrypt password hashing** |
-| Agent Orchestration | LangGraph (planned — Phase 5) |
-| Source Ingestion | HTTP + HTML/RSS parsers (planned — Phase 3) |
-| LLM Provider | **TBD — Free/Open-source/Free-tier** |
-| Scheduler | Later / Optional |
+| Frontend | **React 19 + Vite (JavaScript)** — Responsive dashboard, diff inspector, and dark/light UI |
+| Backend API | **FastAPI + Python 3.13** — Async REST endpoints, Pydantic v2 schemas |
+| Database | **PostgreSQL + SQLAlchemy 2.0 ORM** (with SQLite offline/test fallback) |
+| Database Migrations | **Alembic** (`5110aac07da3`, `7a8b9c0d1e2f`, `8c9d0e1f2a3b`) |
+| Security & Auth | **JWT (pyjwt) + bcrypt password hashing** with HTTPBearer dependency |
+| Ingestion Adapters | **Async HTTPX, BeautifulSoup4, Feedparser** with boilerplate suppression |
+| Diff Engine | **Difflib + SHA-256 hashing** for line-by-line unified diffs and stats |
+| Meaningfulness Classifier | **Heuristic rule engine** filtering noise and classifying substantive categories |
+| Agent Orchestration | **LangGraph** (Phase 5) |
+| LLM Provider | **Provider-independent adapter** (Free/Open-source/Free-tier) |
 
 ## 16. Architecture Status
 
-**Status: Phase 2 — Core Management Complete**
+**Status: Phase 4 — Deterministic Change Detection & Classification Complete**
 
 ---
 
-## 17. Phase 2 Implementation Status
+## 17. Implementation Status Matrix
 
-### What is implemented
+### Implemented Components
 
 | Component | Status | Notes |
 |---|---|---|
 | Backend Architecture | ✅ Done | FastAPI + Python + SQLAlchemy ORM |
 | Authentication | ✅ Done | JWT access tokens + bcrypt hashing (`/auth/register`, `/auth/login`, `/auth/me`) |
-| Entity Relationships | ✅ Done | `User` ➔ `Workspace` ➔ `Competitor` ➔ `Source` |
-| Database Migrations | ✅ Done | Alembic migration scripts |
+| Entity Relationships | ✅ Done | `User` ➔ `Workspace` ➔ `Competitor` ➔ `Source` ➔ `Snapshot` / `Change` |
+| Database Migrations | ✅ Done | Alembic migrations for initial schema, scans/snapshots, and changes |
 | Core REST APIs | ✅ Done | CRUD endpoints for Workspaces, Competitors & Sources with multi-tenant isolation |
-| Backend Unit Tests | ✅ Done | Pytest test suite covering auth, workspaces, competitors & sources (12 tests) |
-| Frontend Integration | ✅ Done | React + Vite UI integrated with JWT Auth, Workspace switcher, Competitor CRUD & Source manager |
+| Source Adapters | ✅ Done | Async HTML & RSS ingestion with boilerplate suppression & timeout guards |
+| Snapshot Storage Engine | ✅ Done | Immutable snapshot history, deterministic SHA-256 content hashing |
+| Scan Orchestration | ✅ Done | Concurrent bounded scans across active sources with partial failure resilience |
+| Change Detection & Diffing | ✅ Done | Line-by-line unified diffs, diff statistics, deterministic change hashing |
+| Meaningfulness Classifier | ✅ Done | Noise suppression vs pricing, feature, blog, and docs category tagging |
+| Backend Test Suite | ✅ Done | Pytest test suite covering all layers (206/206 tests passing) |
+| Frontend Integration | ✅ Done | Dashboard, Competitors, Findings, DiffViewer, SnapshotHistoryModal, Topbar controls |
 | System Health Checks | ✅ Done | `/health` checks backend + DB connection status |
 
-### What is NOT yet implemented (Future Phases)
+### Upcoming Phases
 
-| Component | Phase |
-|---|---|
-| Source adapters / scraping | Phase 3 |
-| Snapshot storage | Phase 3 |
-| Change detection | Phase 4 |
-| LangGraph agentic workflow | Phase 5 |
-| Context research & Impact analysis | Phase 5 |
-| Critic / evidence verification | Phase 6 |
-| Findings dashboard & AI reports | Phase 6 |
-| Proposal generation | Phase 7 |
-
-### Finalized Decisions
-
-- **Backend framework:** FastAPI + Python (Finalized)
-- **Database ORM:** SQLAlchemy with Alembic migrations
-- **Authentication:** Standard JWT Bearer token authentication with bcrypt password hashing
+| Component | Phase | Scope |
+|---|---|---|
+| Context research & Impact analysis | Phase 5 | Deep competitor investigation & product context evaluation |
+| LangGraph agentic workflow | Phase 5 | Multi-agent research, analysis, and synthesis pipeline |
+| Critic / evidence verification | Phase 6 | Claim verification, hallucination checks, confidence scoring |
+| AI intelligence reports | Phase 6 | Structured competitive findings cards and evidence view |
+| Proposal generation & export | Phase 7 | Structured project proposal generator with live editor |
 

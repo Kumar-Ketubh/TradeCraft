@@ -7,20 +7,51 @@
 ---
 
 ### Objectives
-Implement deterministic change detection, diff computation, change hashing, and heuristic meaningfulness classification.
+Implement deterministic change detection, diff computation, change hashing, heuristic meaningfulness classification, and frontend diff inspection.
 
-Phase 4 scope:
-- `Change` relational model with foreign keys, cascading deletes, JSON diff stats, and SQLite/PostgreSQL Alembic migrations.
-- `DiffEngine` producing unified line-by-line diffs (`difflib`) and deterministic SHA-256 change hashes.
-- `MeaningfulnessClassifier` filtering trivial noise (whitespace, copyright years, cookie banners) while tagging substantive shifts (`pricing_change`, `feature_announcement`, `blog_post`, etc.).
-- `ChangeDetectionService` integrated into `ScanService` to automatically detect changes upon scan completion.
-- REST endpoints in `routers/changes.py` with multi-tenant workspace enforcement.
-- React frontend: `DiffViewer.jsx`, `ChangeCard.jsx`, and live intelligence changes feed in `Findings.jsx`.
-- Comprehensive test suite: 206/206 tests passing.
+### Work Completed
+
+#### Data Layer & Migrations
+- Created relational `Change` model in `backend/app/models/change.py` with foreign keys to `workspaces`, `competitors`, `sources`, `scan_runs`, `previous_snapshot_id`, and `current_snapshot_id`.
+- Added fields for deterministic change hash (SHA-256), change category (`pricing_change`, `feature_announcement`, `documentation_update`, `blog_post`, `positioning_shift`, `noise`, `unknown`), boolean `is_meaningful`, confidence/significance score (0.0 to 1.0), summary, line-by-line unified diff, and structured diff statistics JSON.
+- Created and executed Alembic migration `8c9d0e1f2a3b_create_changes_table.py` supporting PostgreSQL and SQLite fallback with cascading foreign key deletions.
+
+#### Deterministic Diff Engine
+- Built `DiffEngine` in `backend/app/diff/engine.py` using Python's standard `difflib.unified_diff`.
+- Computes structured statistics: lines added/removed, characters added/removed, and content similarity ratio.
+- Generates a deterministic 64-character SHA-256 hash from normalized diff text to ensure identical content changes produce identical change records.
+
+#### Meaningfulness & Category Classifier
+- Built `MeaningfulnessClassifier` in `backend/app/classifiers/meaningfulness.py`.
+- Suppresses cosmetic noise: whitespace fluctuations, punctuation, copyright year roll-forwards, session IDs, and cookie/privacy banner updates (`is_meaningful=False`, category `"noise"`).
+- Categorizes substantive changes:
+  - `pricing_change`: Price alterations, dollar/currency changes, tier additions, discounts.
+  - `feature_announcement`: New product capabilities, launches, changelog entries, version increments.
+  - `blog_post` / `documentation_update`: Knowledge base and article publications.
+- Pure heuristic-first execution requiring zero external paid LLM dependencies.
+
+#### Change Detection Service & REST APIs
+- Built `ChangeDetectionService` in `backend/app/services/change_service.py` comparing newly ingested snapshots against prior successful snapshots.
+- Integrated into `ScanService` so scans automatically trigger change detection upon snapshot persistence.
+- Implemented REST endpoints in `backend/app/routers/changes.py`:
+  - `GET /workspaces/{id}/changes`: Paginated, filterable by `is_meaningful`, `category`, and `competitor_id`.
+  - `GET /changes/{id}`: Detailed change view with full unified diff.
+  - `GET /scans/{id}/changes`: Changes detected during a specific scan run.
+
+#### Frontend Intelligence Feed & UI Polish
+- Built `DiffViewer.jsx`: Syntax-highlighted unified diff viewer (green additions, red deletions, neutral line headers).
+- Built `ChangeCard.jsx`: Minimalist card showing competitor badge, category pill, significance score, and diff summary.
+- Updated `Findings.jsx`: Live detected changes feed with quick filters (All vs Meaningful Only, Category filter).
+- Redesigned `Dashboard.jsx`: Minimalist layout with live metric cards, recent scans table, and recent intelligence items.
+- Polished `Topbar.jsx`: Responsive layout with clean 3px-spaced action buttons (Notification Bell, Theme Toggle, User Profile) and viewport-bounded popovers.
+
+#### Testing & Verification
+- Authored extensive pytest suite covering diff engine, meaningfulness classifier, adversarial edge cases, and end-to-end change workflows.
+- Full test suite: **206/206 tests passing**.
 
 ---
 
-## Week 3 — Phase 3: Data Collection & Snapshot Storage
+## Week 3 — Phase 3: Data Collection & Snapshot Storage Engine
 
 **Date:** October 2026
 
@@ -29,12 +60,28 @@ Phase 4 scope:
 ### Objectives
 Implement non-blocking source adapters (`HtmlAdapter`, `RssAdapter`), snapshot storage, content normalization, and scan orchestration.
 
-Phase 3 scope:
-- `ScanRun` and `Snapshot` relational models with Alembic migrations.
-- Async `httpx` and `feedparser` source adapters with boilerplate suppression.
-- `ScanService` executing concurrent workspace/competitor scans with fault-tolerant per-source error capture.
-- REST endpoints in `routers/scans.py` (`POST /workspaces/{id}/scan`, `GET /scans/{id}`, etc.).
-- Frontend scan triggers, live status indicators, and `SnapshotHistoryModal`.
+### Work Completed
+
+#### Data Layer & Migrations
+- Created `ScanRun` and `Snapshot` relational models with cascading foreign keys and indexes.
+- Created and executed Alembic migration `7a8b9c0d1e2f_create_scan_runs_and_snapshots_tables.py`.
+
+#### Ingestion Adapters & Content Normalization
+- Implemented `BaseAdapter`, `HtmlAdapter`, and `RssAdapter` in `backend/app/adapters/`.
+- Built deterministic content normalization stripping dynamic boilerplate (`<script>`, `<style>`, `<nav>`, `<footer>`, ad containers).
+- Built SHA-256 deterministic content hasher producing identical hashes for semantically identical page text.
+- Added adapter factory selecting appropriate parser based on source type.
+
+#### Scan Orchestration Engine
+- Implemented `ScanService` in `backend/app/services/scan_service.py`.
+- Supports workspace-wide concurrent scans (`POST /workspaces/{id}/scan`) and single-competitor scans (`POST /competitors/{id}/scan`).
+- Resilient per-source execution: bounded streaming fetch preventing indefinite hangs; 403, 404, 500, or network timeouts record error snapshots without failing the entire batch scan.
+- Exposed scan and snapshot retrieval REST endpoints in `backend/app/routers/scans.py`.
+
+#### Frontend Integration
+- Added on-demand "Run Workspace Scan" and competitor scan buttons with live loading spinners.
+- Added `SnapshotHistoryModal.jsx` to view historical snapshots and raw content.
+- Added scan history execution logs to the dashboard.
 
 ---
 
@@ -122,17 +169,19 @@ Phase 2 scope:
 
 | Component | Status |
 |---|---|
-| Backend framework | ✅ Finalized (FastAPI) |
+| Backend framework | ✅ Finalized (FastAPI + Python 3.13) |
 | User authentication | ✅ Done (JWT + bcrypt) |
 | Workspace CRUD | ✅ Done |
 | Competitor CRUD | ✅ Done |
 | Source configuration | ✅ Done |
 | Database ORM & Migrations | ✅ Done (SQLAlchemy + Alembic) |
-| Backend unit test suite | ✅ Done (12 tests passing) |
-| Frontend API integration | ✅ Done |
-| Web scraping / source adapters | 🔲 Phase 3 |
-| Change detection | 🔲 Phase 4 |
-| AI / LangGraph workflow | 🔲 Phase 5 |
+| Web scraping & source adapters | ✅ Done (Phase 3: HTML & RSS with boilerplate removal) |
+| Snapshot storage engine | ✅ Done (Phase 3: Content hashing & scan orchestration) |
+| Change detection & diff engine | ✅ Done (Phase 4: Unified diffs, SHA-256 diff hash) |
+| Meaningfulness classifier | ✅ Done (Phase 4: Noise filter vs category classification) |
+| Backend test suite | ✅ Done (206/206 tests passing) |
+| Frontend API integration & UI | ✅ Done (Dashboard, Competitors, Findings, Diff viewer) |
+| AI / LangGraph workflow | 🔲 Phase 5 (Upcoming) |
 
 ---
 
