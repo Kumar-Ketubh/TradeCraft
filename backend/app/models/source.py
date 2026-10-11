@@ -23,3 +23,5 @@ class Source(Base):
     )
 
     competitor = relationship("Competitor", back_populates="sources")
+    snapshots = relationship("Snapshot", back_populates="source", cascade="all, delete-orphan")
+    changes = relationship("Change", back_populates="source", cascade="all, delete-orphan")

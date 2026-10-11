@@ -24,3 +24,5 @@ class Competitor(Base):
 
     workspace = relationship("Workspace", back_populates="competitors")
     sources = relationship("Source", back_populates="competitor", cascade="all, delete-orphan")
+    scan_runs = relationship("ScanRun", back_populates="competitor", cascade="all, delete-orphan")
+    changes = relationship("Change", back_populates="competitor", cascade="all, delete-orphan")

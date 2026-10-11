@@ -14,6 +14,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const initAuth = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryToken = urlParams.get('token');
+    if (queryToken) {
+      setAuthToken(queryToken);
+    }
     const token = getAuthToken();
     if (token) {
       try {
@@ -34,9 +39,12 @@ export function AuthProvider({ children }) {
       const list = await api.workspaces.list();
       setWorkspaces(list || []);
       if (list && list.length > 0) {
+        const savedWsId = localStorage.getItem('tradecraft_active_ws');
+        const savedWs = list.find(w => w.id === savedWsId);
+        const defaultWs = savedWs || list.find(w => (w.competitor_count || 0) > 0) || list[0];
         setActiveWorkspace((prev) => {
           if (prev && list.some(w => w.id === prev.id)) return prev;
-          return list[0];
+          return defaultWs;
         });
       } else {
         setActiveWorkspace(null);
@@ -44,6 +52,13 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('Failed to fetch workspaces', err);
     }
+  };
+
+  const switchWorkspace = (ws) => {
+    if (ws?.id) {
+      localStorage.setItem('tradecraft_active_ws', ws.id);
+    }
+    setActiveWorkspace(ws);
   };
 
   const login = async (data) => {

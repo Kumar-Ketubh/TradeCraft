@@ -346,7 +346,7 @@ TradeCraft/
 
 ## Project Status
 
-**Current stage: Phase 2 — Core Management**
+**Current stage: Phase 5 — Agentic Intelligence (Upcoming)**
 
 ### Implemented
 
@@ -354,25 +354,27 @@ TradeCraft/
 |---|---|
 | Backend Framework | ✅ FastAPI + Python (Finalized) |
 | Authentication | ✅ JWT tokens + bcrypt password hashing |
-| Database Models & ORM | ✅ PostgreSQL + SQLAlchemy ORM (User, Workspace, Competitor, Source) |
+| Database Models & ORM | ✅ PostgreSQL + SQLAlchemy ORM (User, Workspace, Competitor, Source, ScanRun, Snapshot, Change) |
 | Database Migrations | ✅ Alembic migration scripts |
 | Core Management APIs | ✅ REST CRUD for Workspaces, Competitors & Sources |
-| Backend Test Suite | ✅ Pytest suite covering auth, workspaces, competitors & sources (12 tests) |
-| Frontend Integration | ✅ React + Vite with JWT Auth, Workspace selector, Competitor & Source manager |
+| Data Ingestion & Adapters | ✅ Async HTML & RSS source adapters with boilerplate suppression (Phase 3) |
+| Snapshot Storage Engine | ✅ Immutable snapshot history with content hashing & scan orchestration (Phase 3) |
+| Change Detection & Diffing | ✅ Deterministic unified diff engine & SHA-256 change hashing (Phase 4) |
+| Meaningfulness Classification | ✅ Heuristic noise suppression & category tagging (Phase 4) |
+| Frontend Intelligence Feed | ✅ React + Vite with live Changes feed, diff viewer, and scan triggers (Phase 4) |
+| Backend Test Suite | ✅ Pytest suite covering all layers (206 tests passing) |
 | System Health Checks | ✅ `/health` returns FastAPI + DB status |
 
 ### Planned (Future Phases)
 
 | Component | Phase |
 |---|---|
-| Web scraping / source collection | Phase 3 |
-| Snapshot storage | Phase 3 |
-| Change detection & diff classification | Phase 4 |
 | Context research & Impact analysis | Phase 5 |
 | AI agentic workflow (LangGraph) | Phase 5 |
 | Critic / evidence verification | Phase 6 |
-| Findings dashboard & AI reports | Phase 6 |
+| AI intelligence reports | Phase 6 |
 | Proposal generation | Phase 7 |
+
 
 ## How to Run
 

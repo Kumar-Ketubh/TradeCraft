@@ -86,4 +86,33 @@ export const api = {
     update: (compId, sourceId, data) => request(`/competitors/${compId}/sources/${sourceId}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (compId, sourceId) => request(`/competitors/${compId}/sources/${sourceId}`, { method: 'DELETE' }),
   },
+
+  // Scans
+  scans: {
+    triggerWorkspaceScan: (workspaceId) => request(`/workspaces/${workspaceId}/scan`, { method: 'POST' }),
+    triggerCompetitorScan: (competitorId) => request(`/competitors/${competitorId}/scan`, { method: 'POST' }),
+    listWorkspaceScans: (workspaceId) => request(`/workspaces/${workspaceId}/scans`),
+    getScan: (scanId) => request(`/scans/${scanId}`),
+  },
+
+  // Snapshots
+  snapshots: {
+    listBySource: (sourceId) => request(`/sources/${sourceId}/snapshots`),
+  },
+
+  // Changes
+  changes: {
+    listByWorkspace: (workspaceId, params = {}) => {
+      const qs = new URLSearchParams();
+      if (params.is_meaningful !== undefined) qs.set('is_meaningful', params.is_meaningful);
+      if (params.category) qs.set('category', params.category);
+      if (params.competitor_id) qs.set('competitor_id', params.competitor_id);
+      if (params.limit) qs.set('limit', params.limit);
+      if (params.offset) qs.set('offset', params.offset);
+      const query = qs.toString() ? `?${qs.toString()}` : '';
+      return request(`/workspaces/${workspaceId}/changes${query}`);
+    },
+    getById: (changeId) => request(`/changes/${changeId}`),
+    listByScan: (scanId) => request(`/scans/${scanId}/changes`),
+  },
 };

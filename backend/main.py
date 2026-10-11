@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db.database import create_db_engine, Base
-from app.routers import auth, workspaces, competitors, sources
+from app.routers import auth, workspaces, competitors, sources, scans, changes
 from db import check_db_connection
 
 # Ensure tables are created if database is reachable
@@ -34,11 +34,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register Phase 2 Modular Routers
+# Register Phase 2, 3 & 4 Modular Routers
 app.include_router(auth.router)
 app.include_router(workspaces.router)
 app.include_router(competitors.router)
 app.include_router(sources.router)
+app.include_router(scans.router)
+app.include_router(changes.router)
 
 
 @app.get("/health", summary="Health check")

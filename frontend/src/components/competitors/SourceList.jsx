@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, History } from 'lucide-react';
+import SnapshotHistoryModal from '../snapshots/SnapshotHistoryModal';
 
 const SOURCE_TYPES = [
   { value: 'website', label: 'Main Website' },
@@ -28,26 +29,28 @@ export default function SourceList({ competitor, onClose, onSourcesUpdated }) {
   const [sourceType, setSourceType] = useState('pricing');
   const [monitoringEnabled, setMonitoringEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedSourceForHistory, setSelectedSourceForHistory] = useState(null);
 
-  useEffect(() => {
-    if (competitor?.id) {
-      fetchSources();
-    }
-  }, [competitor?.id]);
-
-  const fetchSources = async () => {
+  const fetchSources = useCallback(async () => {
+    if (!competitor?.id) return;
     setLoading(true);
     setError(null);
     try {
       const data = await api.sources.list(competitor.id);
       setSources(data || []);
-      if (onSourcesUpdated) onSourcesUpdated();
     } catch (err) {
       setError(err.message || 'Failed to load sources');
     } finally {
       setLoading(false);
     }
-  };
+  }, [competitor?.id]);
+
+  useEffect(() => {
+    if (competitor?.id) {
+      fetchSources();
+    }
+  }, [competitor?.id, fetchSources]);
+
 
   const handleOpenAdd = () => {
     setEditingSource(null);
@@ -89,6 +92,7 @@ export default function SourceList({ competitor, onClose, onSourcesUpdated }) {
       }
       setShowForm(false);
       await fetchSources();
+      if (onSourcesUpdated) onSourcesUpdated();
     } catch (err) {
       alert(err.message || 'Failed to save source');
     } finally {
@@ -102,6 +106,7 @@ export default function SourceList({ competitor, onClose, onSourcesUpdated }) {
         monitoring_enabled: !src.monitoring_enabled,
       });
       await fetchSources();
+      if (onSourcesUpdated) onSourcesUpdated();
     } catch (err) {
       alert(err.message || 'Failed to update monitoring status');
     }
@@ -112,10 +117,12 @@ export default function SourceList({ competitor, onClose, onSourcesUpdated }) {
     try {
       await api.sources.delete(competitor.id, srcId);
       await fetchSources();
+      if (onSourcesUpdated) onSourcesUpdated();
     } catch (err) {
       alert(err.message || 'Failed to delete source');
     }
   };
+
 
   if (!competitor) return null;
 
@@ -230,6 +237,14 @@ export default function SourceList({ competitor, onClose, onSourcesUpdated }) {
                   </td>
                   <td>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedSourceForHistory(src)}
+                        title="View Snapshot History"
+                      >
+                        <History size={16} />
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(src)} title="Edit">
                         <Edit2 size={16} />
                       </Button>
@@ -243,6 +258,14 @@ export default function SourceList({ competitor, onClose, onSourcesUpdated }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {selectedSourceForHistory && (
+        <SnapshotHistoryModal
+          isOpen={Boolean(selectedSourceForHistory)}
+          source={selectedSourceForHistory}
+          onClose={() => setSelectedSourceForHistory(null)}
+        />
       )}
     </Modal>
   );

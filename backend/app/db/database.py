@@ -1,8 +1,19 @@
 # backend/app/db/database.py
 import os
-from sqlalchemy import create_engine
+import sqlite3
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
+
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection) or type(dbapi_connection).__module__ == "sqlite3":
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 
 def create_db_engine(url: str = None):
     db_url = url or os.getenv("DATABASE_URL") or settings.DATABASE_URL

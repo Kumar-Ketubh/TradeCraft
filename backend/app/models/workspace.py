@@ -21,3 +21,5 @@ class Workspace(Base):
 
     owner = relationship("User", back_populates="workspaces")
     competitors = relationship("Competitor", back_populates="workspace", cascade="all, delete-orphan")
+    scan_runs = relationship("ScanRun", back_populates="workspace", cascade="all, delete-orphan")
+    changes = relationship("Change", back_populates="workspace", cascade="all, delete-orphan")

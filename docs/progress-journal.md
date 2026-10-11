@@ -1,5 +1,43 @@
 # TradeCraft — Progress Journal
 
+## Week 4 — Phase 4: Deterministic Change Detection & Classification
+
+**Date:** October 2026
+
+---
+
+### Objectives
+Implement deterministic change detection, diff computation, change hashing, and heuristic meaningfulness classification.
+
+Phase 4 scope:
+- `Change` relational model with foreign keys, cascading deletes, JSON diff stats, and SQLite/PostgreSQL Alembic migrations.
+- `DiffEngine` producing unified line-by-line diffs (`difflib`) and deterministic SHA-256 change hashes.
+- `MeaningfulnessClassifier` filtering trivial noise (whitespace, copyright years, cookie banners) while tagging substantive shifts (`pricing_change`, `feature_announcement`, `blog_post`, etc.).
+- `ChangeDetectionService` integrated into `ScanService` to automatically detect changes upon scan completion.
+- REST endpoints in `routers/changes.py` with multi-tenant workspace enforcement.
+- React frontend: `DiffViewer.jsx`, `ChangeCard.jsx`, and live intelligence changes feed in `Findings.jsx`.
+- Comprehensive test suite: 206/206 tests passing.
+
+---
+
+## Week 3 — Phase 3: Data Collection & Snapshot Storage
+
+**Date:** October 2026
+
+---
+
+### Objectives
+Implement non-blocking source adapters (`HtmlAdapter`, `RssAdapter`), snapshot storage, content normalization, and scan orchestration.
+
+Phase 3 scope:
+- `ScanRun` and `Snapshot` relational models with Alembic migrations.
+- Async `httpx` and `feedparser` source adapters with boilerplate suppression.
+- `ScanService` executing concurrent workspace/competitor scans with fault-tolerant per-source error capture.
+- REST endpoints in `routers/scans.py` (`POST /workspaces/{id}/scan`, `GET /scans/{id}`, etc.).
+- Frontend scan triggers, live status indicators, and `SnapshotHistoryModal`.
+
+---
+
 ## Week 2 — Phase 2: Core Management
 
 **Date:** September 2026

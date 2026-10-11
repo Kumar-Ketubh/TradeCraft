@@ -4,13 +4,20 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
 export default function AppLayout() {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeParam = urlParams.get('theme');
+    if (themeParam) return themeParam === 'dark';
+    return localStorage.getItem('tradecraft_theme') === 'dark';
+  });
 
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
+      localStorage.setItem('tradecraft_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      localStorage.setItem('tradecraft_theme', 'light');
     }
   }, [isDark]);
 

@@ -28,9 +28,9 @@ export default function Competitors() {
     }
   }, [activeWorkspace?.id]);
 
-  const fetchCompetitors = async () => {
+  const fetchCompetitors = async (isSilent = false) => {
     if (!activeWorkspace) return;
-    setLoading(true);
+    if (!isSilent) setLoading(true);
     setError(null);
     try {
       const data = await api.competitors.list(activeWorkspace.id);
@@ -38,9 +38,10 @@ export default function Competitors() {
     } catch (err) {
       setError(err.message || 'Failed to fetch competitors');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
+
 
   const handleOpenAdd = () => {
     setEditingComp(null);
@@ -153,9 +154,10 @@ export default function Competitors() {
         <SourceList
           competitor={selectedCompForSources}
           onClose={() => setSelectedCompForSources(null)}
-          onSourcesUpdated={fetchCompetitors}
+          onSourcesUpdated={() => fetchCompetitors(true)}
         />
       )}
     </div>
   );
 }
+
