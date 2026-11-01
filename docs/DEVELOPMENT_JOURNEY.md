@@ -58,6 +58,7 @@ We unified the data models directly on TradeCraft's synchronous `Base`:
 2. `Proposal` was integrated with `workspaces.id` and standard `ProposalStatus` enum.
 3. Bidirectional relationships were established on `Workspace`, `Change`, and `Snapshot`.
 4. Pydantic schemas were implemented in `app/schemas/finding.py` and `app/schemas/proposal.py`, supporting full response serialization with evidence grounding.
+5. `run_agent_pipeline` was adapted to accept synchronous `db: Session`, invoking the compiled `intelligence_graph` synchronously.
 
 ### 6. Lessons Learned
 When integrating an independently developed AI pipeline into an existing enterprise codebase, align the pipeline to the host application's database session lifecycle rather than forcing an asynchronous architectural rewrite of the host system.
@@ -94,5 +95,27 @@ This cleanly strips extraneous whitespace before punctuation marks, making the n
 
 ### 6. Lessons Learned
 HTML tag stripping via regex should always normalize whitespace relative to punctuation boundaries to avoid syntactically malformed sentences in downstream diffs and LLM context windows.
+
+---
+
+## Technical Challenge 4: End-to-End Evidence Grounding and Hallucination Protection in Proposal Synthesis
+
+### 1. Implementation Goal
+Ensure that the proposal generation engine enforces strict grounding: all synthesized project proposals must cite verified evidence quotes with character offsets, and any unverified or rejected findings must be strictly barred from proposal inclusion.
+
+### 2. Problem Encountered
+During early prototyping, proposals could potentially be generated from preliminary changes before the Critic / Verifier node had established factual grounding. This risked hallucinating competitor moves in executive-facing proposals.
+
+### 3. Why the Problem Occurred
+In competitive intelligence, ungrounded competitor claims undermine customer trust. A threshold of `EGA >= 85%` is necessary to ensure factual accuracy. If the frontend allows selecting unverified findings, or the backend accepts them without validation, hallucinations could pollute the strategic roadmap.
+
+### 4. Final Resolution
+We implemented a two-layer guard:
+1. **API & Engine Validation**: In `proposals.py` and `generator.py`, any finding with `verification_status != VERIFIED` triggers an immediate `400 Bad Request` (`"Cannot generate proposal with unverified findings: Only VERIFIED findings may be used"`).
+2. **Deterministic Fallback**: `generator.py` contains a deterministic template renderer enforcing the exact 7-section H2 structure (`## 1. Problem / Opportunity` through `## 7. Expected Value`) and formatting verbatim snapshot quotes with source attribution.
+3. **Frontend Guarding**: `Proposal.jsx` filters selectable findings to only `VERIFIED` items with their EGA score badges visible, giving users clear visibility into grounding quality.
+
+### 5. Lessons Learned
+Hallucination protection in AI workflows requires defense-in-depth: semantic validation in the agent pipeline (Critic node), strict schema and status validation at the API boundary, and clear visual indicators in the presentation layer.
 
 ---

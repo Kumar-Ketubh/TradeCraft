@@ -346,7 +346,7 @@ TradeCraft/
 
 ## Project Status
 
-**Current stage: Phase 5 — Agentic Intelligence (Upcoming)**
+**Current stage: Phase 7 — Proposal Generation (Completed & Integrated)**
 
 ### Implemented
 
@@ -354,26 +354,20 @@ TradeCraft/
 |---|---|
 | Backend Framework | ✅ FastAPI + Python (Finalized) |
 | Authentication | ✅ JWT tokens + bcrypt password hashing |
-| Database Models & ORM | ✅ PostgreSQL + SQLAlchemy ORM (User, Workspace, Competitor, Source, ScanRun, Snapshot, Change) |
+| Database Models & ORM | ✅ PostgreSQL + SQLAlchemy ORM (User, Workspace, Competitor, Source, ScanRun, Snapshot, Change, IntelligenceFinding, EvidenceQuote, Proposal) |
 | Database Migrations | ✅ Alembic migration scripts |
 | Core Management APIs | ✅ REST CRUD for Workspaces, Competitors & Sources |
 | Data Ingestion & Adapters | ✅ Async HTML & RSS source adapters with boilerplate suppression (Phase 3) |
 | Snapshot Storage Engine | ✅ Immutable snapshot history with content hashing & scan orchestration (Phase 3) |
 | Change Detection & Diffing | ✅ Deterministic unified diff engine & SHA-256 change hashing (Phase 4) |
 | Meaningfulness Classification | ✅ Heuristic noise suppression & category tagging (Phase 4) |
-| Frontend Intelligence Feed | ✅ React + Vite with live Changes feed, diff viewer, and scan triggers (Phase 4) |
-| Backend Test Suite | ✅ Pytest suite covering all layers (206 tests passing) |
-| System Health Checks | ✅ `/health` returns FastAPI + DB status |
-
-### Planned (Future Phases)
-
-| Component | Phase |
-|---|---|
-| Context research & Impact analysis | Phase 5 |
-| AI agentic workflow (LangGraph) | Phase 5 |
-| Critic / evidence verification | Phase 6 |
-| AI intelligence reports | Phase 6 |
-| Proposal generation | Phase 7 |
+| AI Agentic Intelligence (LangGraph) | ✅ Context Researcher, Impact Analyzer, and Critic Verifier workflow (Phase 5) |
+| Critic & Evidence Verification | ✅ Exact character offsets & Evidence Grounding Accuracy (EGA >= 85%) (Phase 6) |
+| Intelligence Findings & Dashboard | ✅ REST API & real-time verified findings feed with evidence inspector (Phase 6) |
+| Proposal Synthesis Engine | ✅ Executive counter-proposal synthesis enforcing 7-section standard & quote trace (Phase 7) |
+| Proposal Management UI | ✅ Interactive proposal generator, markdown editor, and draft/finalization workflow (Phase 7) |
+| Backend Test Suite | ✅ Comprehensive Pytest suite covering all pipeline layers (210 tests passing) |
+| System Health Checks | ✅ `/health` returns FastAPI, DB & active AI workflow status |
 
 
 ## How to Run
