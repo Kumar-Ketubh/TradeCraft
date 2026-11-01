@@ -8,415 +8,290 @@ An agentic competitive-intelligence platform that monitors competitor changes, i
 
 Teams often monitor competitors manually across pricing pages, product pages, changelogs, blogs, public repositories, and announcements.
 
-Existing change-monitoring tools can identify that a page changed, but they do not necessarily explain:
+Existing change-monitoring tools can identify that a page changed, but they do not explain:
 
 - What changed?
 - Why does it matter?
 - What evidence supports the conclusion?
 - What should we consider doing next?
 
-TradeCraft addresses that gap by combining source monitoring, change detection, agentic research, impact analysis, verification, and proposal generation into a single workflow.
+TradeCraft addresses that gap by combining source monitoring, change detection, agentic research, impact analysis, verification, and proposal generation into a single continuous pipeline.
 
 ### Core Workflow
 
 ```text
-What Changed?
+What Changed? (Ingestion & Unified Diff)
       ↓
-Why Does It Matter?
+Why Does It Matter? (Context Researcher & Impact Analyzer)
       ↓
-What Evidence Supports It?
+What Evidence Supports It? (Critic / Verifier with EGA Threshold)
       ↓
-What Should We Consider Doing Next?
+What Should We Consider Doing Next? (Actionable Countermeasures)
       ↓
-Generate a Project Proposal
+Generate a Project Proposal (7-Section Executive Document)
 ```
 
 ## Key Features
 
-- User authentication and workspace management
-- Competitor management
-- Public source configuration
-- On-demand competitor scans
-- Source snapshot storage
-- Deterministic change detection
-- Meaningfulness classification
-- Context research
-- Impact analysis
-- Evidence verification
-- Confidence and verification status
-- Findings dashboard
-- Scan history
-- Evidence-backed recommendations
-- Structured project proposal generation
-- Editable proposal output
+- **Multi-Tenant Workspace & Competitor Management**: Isolate competitor sources, snapshots, diffs, and findings by workspace.
+- **Automated Ingestion Adapters**: Robust fetching with boilerplate suppression for HTML web pages and RSS/Atom syndication feeds.
+- **Deterministic Snapshot & Diff Engine**: Myers diff algorithm with SHA-256 content and change hashing.
+- **Heuristic Meaningfulness Classification**: Filters trivial noise and tags change categories (`PRICING_CHANGE`, `FEATURE_RELEASE`, `POSITIONING`, `DEPRECATION`, `OTHER`).
+- **LangGraph Agentic Intelligence**: Orchestrated stateful graph executing Context Research, Impact Analysis, and Critic Verification.
+- **Strict Evidence Grounding**: Calculates Evidence Grounding Accuracy ($EGA \ge 85\%$) and maps verbatim snapshot quotes with exact character offsets (`char_offset_start`, `char_offset_end`).
+- **Hallucination Prevention**: Automatically downgrades or rejects ungrounded claims, ensuring proposals cite only verified evidence.
+- **Structured Proposal Generator**: Synthesizes executive project counter-proposals adhering to a strict 7-section document standard.
+- **Interactive Modern Frontend**: React 19 + Vite UI featuring real-time diff viewers, an "Analyze with AI" trigger, live EGA badges, and a Markdown proposal editor.
+- **Zero-Paid-API Mandate**: Operates seamlessly with free/open-source LLMs (Groq, Gemini Free Tier, Ollama) and includes a deterministic mock adapter for offline testing.
 
-## Agentic Workflow
+---
 
-The system uses LangGraph as the orchestration layer.
+## Agentic Workflow (LangGraph)
 
-```text
-START
-  │
-  ▼
-Collect
-  │
-  ▼
-Detect Changes
-  │
-  ▼
-Classify
-  │
-  ├──────── No meaningful change ───────► END
-  │
-  ▼
-Research
-  │
-  ▼
-Impact Analysis
-  │
-  ▼
-Verify
-  │
-  ├──────── Reject / insufficient evidence ─► END
-  │
-  ▼
-Report
-  │
-  ▼
-Optional Proposal Generation
-  │
-  ▼
-END
+The system orchestrates competitive intelligence extraction using **LangGraph**:
+
+```mermaid
+flowchart TD
+    A[Start: Change Record] --> B[Context Researcher Node]
+    B --> C[Impact Analyzer Node]
+    C --> D[Critic / Verifier Node]
+    D -->|EGA < 85% & Retries Left| C
+    D -->|EGA >= 85% or Max Retries| E[Persist IntelligenceFinding & EvidenceQuotes]
+    E --> F[Optional: Proposal Engine]
+    F --> G[End: 7-Section Counter-Proposal]
 ```
 
-### Agent Components
+### Agent Nodes & Responsibilities
 
-| Component | Responsibility |
-|---|---|
-| Collector | Fetch configured public sources and latest snapshots |
-| Change Detector | Determine what changed since the previous snapshot |
-| Change Classifier | Filter trivial changes and classify significance |
-| Context Researcher | Gather additional supporting context |
-| Impact Analyst | Relate changes to the user's project/product context |
-| Critic / Verifier | Challenge unsupported claims and assess evidence |
-| Report Generator | Produce facts, interpretation, evidence, confidence, and recommendation |
-| Proposal Generator | Convert validated findings into a structured project proposal |
+| Node | Responsibility | Output Artifacts |
+|---|---|---|
+| **Context Researcher** | Analyzes candidate diff in the context of the clean snapshot text; identifies factual claims and candidate quotes. | `factual_summary`, `extracted_quotes` |
+| **Impact Analyzer** | Cross-references observed changes against the workspace's product positioning, value proposition, and strategic focus. | `title`, `category`, `impact_analysis`, `recommended_action` |
+| **Critic / Verifier** | Verifies candidate quotes against snapshot text, maps character offsets, computes EGA %, and enforces downgrade/rejection thresholds. | `verified_quotes`, `grounding_score`, `verification_status`, `confidence_level` |
+| **Proposal Generator** | Synthesizes verified findings into an executive-ready project proposal enforcing the 7-section standard and evidence quote attribution. | 7-section Markdown Proposal |
+
+---
 
 ## System Architecture
 
-The MVP uses a simple full-stack architecture:
-
 ```text
-┌───────────────────────┐
-│      Next.js UI       │
-│  Dashboard / Findings │
-│  Proposal Editor      │
-└───────────┬───────────┘
-            │
-            ▼
-┌───────────────────────┐
-│      FastAPI API      │
-│ Auth / REST / Control │
-└───────────┬───────────┘
-            │
-            ▼
-┌───────────────────────┐
-│      LangGraph        │
-│   Agentic Workflow    │
-└───────────┬───────────┘
-            │
-      ┌─────┴─────┐
-      ▼           ▼
-┌───────────┐ ┌────────────────┐
-│PostgreSQL │ │ Source Adapters│
-│           │ │ Web / RSS / GH │
-└───────────┘ └────────────────┘
+┌────────────────────────────────────────────────────────┐
+│            Frontend (React 19 + Vite + Tailwind)       │
+│  - Changes & Diff Viewer       - Findings Feed (EGA)   │
+│  - AI Analysis Triggers        - Proposal Editor       │
+└───────────────────────────┬────────────────────────────┘
+                            │ REST / JSON (JWT Auth)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│                 FastAPI Backend API                    │
+│  - /auth, /workspaces, /competitors, /sources          │
+│  - /scans, /changes, /findings, /proposals             │
+└─────────────┬──────────────────────────────┬───────────┘
+              │                              │
+              ▼                              ▼
+┌───────────────────────────┐  ┌───────────────────────────┐
+│     SQLAlchemy 2.0 ORM    │  │   LangGraph Agent Engine  │
+│  - SQLite (Local Dev/Test)│  │  - Context Researcher     │
+│  - PostgreSQL (Production)│  │  - Impact Analyzer        │
+└───────────────────────────┘  │  - Critic / Verifier      │
+                               └─────────────┬─────────────┘
+                                             │
+                                             ▼
+                               ┌───────────────────────────┐
+                               │   LLM Provider Adapter    │
+                               │  - Groq / Gemini / Ollama │
+                               │  - Deterministic Mock     │
+                               └───────────────────────────┘
 ```
 
 ### Technology Stack
 
-**Frontend**
-- Next.js
-- React
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy 2.0, Pydantic v2, Uvicorn
+- **Agent Orchestration**: LangGraph, LangChain Core, LangChain Community
+- **Frontend**: React 19, Vite 8, Lucide React, React Router v7
+- **Database**: SQLite (local development and automated testing) or PostgreSQL (production)
+- **Ingestion & Diff Engine**: HTTPX, BeautifulSoup4, Feedparser, ElementTree, Myers unified diff
 
-**Backend**
-- Python
-- FastAPI
-- LangGraph
+---
 
-**Database**
-- PostgreSQL
+## Proposal Generator (7-Section Standard)
 
-**Source ingestion**
-- HTTP fetching
-- HTML parsing
-- RSS/Atom parsing
-- Optional public GitHub sources
+The proposal engine synthesizes verified competitor moves into an executive-ready counter-proposal. The output strictly enforces the following seven sections as Markdown H2 headers:
 
-**AI layer**
-- Free/open-source or free-tier models
-- Provider-independent LLM adapter
+1. `## 1. Problem / Opportunity` — Commercial urgency and market shift.
+2. `## 2. Competitor Change` — Verified competitor adjustments and categorization.
+3. `## 3. Evidence` — Verbatim snapshot excerpts with source links and timestamps.
+4. `## 4. Strategic Impact` — Implications for customer retention and pipeline velocity.
+5. `## 5. Proposed Response` — Recommended strategic, technical, or commercial countermeasure.
+6. `## 6. Suggested Features/Work` — Phased action plan (Immediate Parity, Core Differentiators, GTM).
+7. `## 7. Expected Value` — Expected ROI, churn reduction, and strategic alignment.
 
-## MVP Scope
+> **Hallucination Guard**: The proposal API strictly bars any unverified or rejected finding (`verification_status != VERIFIED`).
 
-The MVP is intentionally limited to a small number of competitors and public sources.
-
-The system should support:
-
-- 2–5 competitors per workspace
-- A small number of configured public sources per competitor
-- Manual `Run Scan`
-- Source snapshots
-- Change detection
-- Meaningfulness classification
-- Context research
-- Impact analysis
-- Evidence verification
-- Findings and recommendations
-- Proposal generation from validated findings
-
-The MVP does **not** aim to be a general-purpose web crawler or large-scale monitoring platform.
-
-## Evidence and Hallucination Controls
-
-A major design principle of this project is that AI-generated conclusions must not be presented as facts.
-
-Every finding should distinguish between:
-
-```text
-FACTS
-     ↓
-Observed from collected evidence
-
-INTERPRETATION
-     ↓
-AI-generated analysis of what the change may mean
-
-RECOMMENDATION
-     ↓
-Suggested next step based on the evidence and interpretation
-```
-
-The system should:
-
-- Store source URLs and fetch timestamps
-- Require source-backed evidence for findings
-- Track confidence and verification status
-- Reject or mark findings as unconfirmed when evidence is insufficient
-- Surface contradictory evidence
-- Avoid inventing competitor prices, features, dates, or announcements
-
-## Proposal Generator
-
-Validated competitive findings can be converted into a structured project proposal.
-
-The proposal may contain:
-
-- Project title
-- Background / market context
-- Problem statement
-- Target users
-- Observed evidence
-- Proposed solution
-- Key features
-- Agentic AI role
-- Functional requirements
-- High-level architecture
-- Suggested technology stack
-- MVP scope
-- Future scope
-- Risks and assumptions
-- Evaluation plan
-- Expected outcome
-
-The proposal should clearly distinguish evidence-derived facts from AI-generated interpretation and recommendations.
-
-## Project Roadmap
-
-### Phase 1 — Project Foundation
-- Frontend scaffold
-- Backend scaffold
-- Database setup
-- Architecture documentation
-- Health checks
-
-### Phase 2 — Core Management
-- Authentication
-- Workspace creation
-- Competitor management
-- Source configuration
-
-### Phase 3 — Data Collection
-- Source adapters
-- Snapshot storage
-- Fetching and parsing
-
-### Phase 4 — Change Detection
-- Deterministic comparison
-- Change hashing
-- Meaningfulness filtering
-
-### Phase 5 — Agentic Intelligence
-- LangGraph workflow
-- Context research
-- Impact analysis
-- Verification
-- Report generation
-
-### Phase 6 — Dashboard
-- Findings interface
-- Evidence view
-- Scan history
-- Filtering and status management
-
-### Phase 7 — Proposal Generation
-- Proposal generation
-- Proposal editing
-- Export / copy workflow
-
-### Phase 8 — Evaluation & Testing
-- Unit tests
-- Integration tests
-- Agent tests
-- End-to-end testing
-- Evaluation fixtures and benchmarks
-
-### Phase 9 — Polish & Deployment
-- UI refinement
-- Optional scheduling
-- Deployment
-
-## Evaluation
-
-The system will be evaluated at four levels:
-
-| Area | Evaluation |
-|---|---|
-| Change Detection | Precision / recall using controlled source changes |
-| Meaningfulness Classification | Comparison against manually labelled data |
-| Evidence Correctness | Verify that evidence supports stated facts |
-| Proposal Quality | Human evaluation of grounding, usefulness, completeness, and actionability |
-
-## Testing
-
-Testing will cover:
-
-- Source parsers
-- Change hashing
-- Candidate filtering
-- Data models
-- API validation
-- Database + API integration
-- LangGraph agent behavior
-- End-to-end workflow
-- Source failures
-- LLM failures
-- Malformed model output
-- Duplicate findings
-- Insufficient evidence
-
-## Cost Constraint
-
-The project is designed to operate without a paid LLM dependency.
-
-The architecture will:
-
-- Keep LLM calls behind a single adapter
-- Allow provider/model configuration through environment variables
-- Prefer deterministic processing before LLM calls
-- Cache analysis where practical
-- Gracefully handle free-provider rate limits
-- Continue with non-AI checks when an LLM call fails
+---
 
 ## Repository Structure
 
 ```text
 TradeCraft/
-├── frontend/          React + Vite frontend scaffold
-├── backend/           Backend scaffold (FastAPI — tech TBD)
-├── database/          PostgreSQL schema and setup notes
+├── backend/
+│   ├── app/
+│   │   ├── adapters/          # Ingestion adapters (HTML, RSS/Atom)
+│   │   ├── classifiers/       # Meaningfulness and noise classification
+│   │   ├── core/              # Config (Settings), JWT security
+│   │   ├── db/                # Database engine and session setup
+│   │   ├── diff/              # Myers diff engine and change hashing
+│   │   ├── models/            # SQLAlchemy ORM entities (Finding, Proposal, etc.)
+│   │   ├── routers/           # FastAPI REST endpoints
+│   │   ├── schemas/           # Pydantic v2 request/response models
+│   │   └── services/
+│   │       ├── agents/        # LangGraph StateGraph, nodes & LLM factory
+│   │       ├── proposal_engine/ # 7-section proposal synthesis engine
+│   │       ├── scan_service.py # Concurrent source scanning & pipeline trigger
+│   │       └── change_service.py # Change detection & classification
+│   ├── tests/                 # Comprehensive test suite (210 passing tests)
+│   ├── main.py                # FastAPI entry point
+│   └── requirements.txt       # Backend dependencies
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # UI components, DiffViewer, ChangeCard
+│   │   ├── pages/             # Dashboard, Findings, Proposal, Competitors
+│   │   ├── services/          # API client for backend communication
+│   │   └── App.jsx            # Application root and route registration
+│   ├── package.json
+│   └── vite.config.js
 ├── docs/
-│   ├── architecture.md
-│   ├── system-architecture.png
-│   └── progress-journal.md
-├── .env.example
-├── .gitignore
-└── README.md
+│   ├── DEVELOPMENT_JOURNEY.md # Technical challenges, root causes & resolutions
+│   └── architecture.md        # Architecture specification
+├── README.md
+└── .env.example
 ```
 
-## Project Status
+---
 
-**Current stage: Phase 7 — Proposal Generation (Completed & Integrated)**
+## Setup & Running Guide
 
-### Implemented
+### 1. Environment Configuration
 
-| Component | Status |
-|---|---|
-| Backend Framework | ✅ FastAPI + Python (Finalized) |
-| Authentication | ✅ JWT tokens + bcrypt password hashing |
-| Database Models & ORM | ✅ PostgreSQL + SQLAlchemy ORM (User, Workspace, Competitor, Source, ScanRun, Snapshot, Change, IntelligenceFinding, EvidenceQuote, Proposal) |
-| Database Migrations | ✅ Alembic migration scripts |
-| Core Management APIs | ✅ REST CRUD for Workspaces, Competitors & Sources |
-| Data Ingestion & Adapters | ✅ Async HTML & RSS source adapters with boilerplate suppression (Phase 3) |
-| Snapshot Storage Engine | ✅ Immutable snapshot history with content hashing & scan orchestration (Phase 3) |
-| Change Detection & Diffing | ✅ Deterministic unified diff engine & SHA-256 change hashing (Phase 4) |
-| Meaningfulness Classification | ✅ Heuristic noise suppression & category tagging (Phase 4) |
-| AI Agentic Intelligence (LangGraph) | ✅ Context Researcher, Impact Analyzer, and Critic Verifier workflow (Phase 5) |
-| Critic & Evidence Verification | ✅ Exact character offsets & Evidence Grounding Accuracy (EGA >= 85%) (Phase 6) |
-| Intelligence Findings & Dashboard | ✅ REST API & real-time verified findings feed with evidence inspector (Phase 6) |
-| Proposal Synthesis Engine | ✅ Executive counter-proposal synthesis enforcing 7-section standard & quote trace (Phase 7) |
-| Proposal Management UI | ✅ Interactive proposal generator, markdown editor, and draft/finalization workflow (Phase 7) |
-| Backend Test Suite | ✅ Comprehensive Pytest suite covering all pipeline layers (210 tests passing) |
-| System Health Checks | ✅ `/health` returns FastAPI, DB & active AI workflow status |
+Create `.env` in the `backend/` directory:
 
+```ini
+# Application Settings
+PROJECT_NAME="TradeCraft API"
+VERSION="0.3.0"
 
-## How to Run
+# Security
+JWT_SECRET="your-secure-jwt-secret-key-change-in-prod"
+JWT_ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-### 1. Database Setup
+# Database Configuration
+# Leave empty for SQLite fallback (zero configuration needed), or specify PostgreSQL:
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/tradecraft"
 
-Ensure PostgreSQL is running locally, then create the database and run migrations:
-
-```bash
-psql -U postgres -c "CREATE DATABASE tradecraft;"
-
-cd backend
-cp .env.example .env  # configure your DATABASE_URL and JWT_SECRET
-source venv/bin/activate
-alembic upgrade head
+# LLM Configuration (Zero-Paid API Mandate)
+# Options: "mock" (offline/tests), "groq", "gemini", "ollama"
+LLM_PROVIDER="mock"
+LLM_MODEL_NAME="llama-3.3-70b-versatile"
+GROQ_API_KEY=""
+GEMINI_API_KEY=""
+OLLAMA_BASE_URL="http://localhost:11434"
 ```
 
-### 2. Backend Server
+### 2. Backend Setup & Startup
 
 ```bash
 cd backend
+
+# Create and activate virtual environment
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+# On Linux/macOS:
 source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Start the FastAPI server
 uvicorn main:app --port 8001 --reload
 ```
 
-- API Base URL: `http://localhost:8001`
-- Interactive API Docs: `http://localhost:8001/docs`
-- Health check: `GET http://localhost:8001/health`
+- **API Base URL**: `http://localhost:8001`
+- **Interactive Swagger Docs**: `http://localhost:8001/docs`
+- **Health Check**: `GET http://localhost:8001/health`
 
-### 3. Run Backend Tests
-
-```bash
-cd backend
-source venv/bin/activate
-pytest -v
-```
-
-### 4. Frontend Application
+### 3. Frontend Setup & Startup
 
 ```bash
 cd frontend
+
+# Install node dependencies
 npm install
+
+# Start Vite development server
 npm run dev
 ```
 
-Runs at: `http://localhost:5173` or `http://localhost:5174`
+- **Application URL**: `http://localhost:5173` (or `http://localhost:5174`)
 
-## Project Positioning
+---
 
-> **An agentic competitive-intelligence platform that monitors competitor changes, investigates their significance, verifies evidence, and generates actionable insights and project proposals.**
+## Running the Integrated Pipeline
 
+### Automated Execution (via Scans)
+1. Add a competitor and configure a source URL (e.g., a competitor pricing or changelog page).
+2. Trigger a scan (`POST /workspaces/{id}/scan` or click **"Run Scan"** in the UI).
+3. If the page content has changed since the previous snapshot, the system computes the unified diff.
+4. If classified as **meaningful**, `scan_service.py` automatically passes the change to the LangGraph agent pipeline.
+5. The pipeline executes `Context Researcher -> Impact Analyzer -> Critic Verifier`, persisting an `IntelligenceFinding` with evidence quotes.
+
+### Manual On-Demand Execution
+To trigger AI analysis on any detected change via API:
+```bash
+POST /changes/{change_id}/analyze
+Authorization: Bearer <your_token>
+```
+Or on the web UI: navigate to **Findings**, click **"Analyze with AI"** on any change card, and inspect the resulting EGA score and grounded quotes.
+
+### Proposal Generation
+1. In the web UI, navigate to **Proposals**.
+2. Click **"New Proposal"**, provide a title and target goal, and select the verified findings to include.
+3. Click **"Generate Proposal"** to synthesize the 7-section executive counter-proposal.
+4. Review, edit the markdown, or toggle status between `DRAFT` and `FINALIZED`.
+
+---
+
+## Running Automated Tests
+
+The test suite covers source parsing, change hashing, diff computation, security isolation, the LangGraph agent workflow, evidence grounding, and proposal generation:
+
+```bash
+cd backend
+source venv/bin/activate # or .\venv\Scripts\activate on Windows
+
+# Run the complete test suite (210 tests)
+pytest -v
+
+# Run the LangGraph integration tests specifically
+pytest tests/test_agent_pipeline_integration.py -v
+```
+
+All 210 tests pass deterministically without network dependencies using the mock LLM adapter.
+
+---
+
+## Project Status
+
+| Component | Status |
+|---|---|
+| User Authentication & JWT Security | ✅ Completed |
+| Workspace, Competitor & Source Management | ✅ Completed |
+| Ingestion Adapters (HTML & RSS/Atom) | ✅ Completed |
+| Immutable Snapshot Engine & Myers Diff | ✅ Completed |
+| Meaningfulness Classification & Noise Filter | ✅ Completed |
+| LangGraph Agent Pipeline (Researcher, Analyzer, Critic) | ✅ Completed |
+| Evidence Grounding Accuracy ($EGA \ge 85\%$) & Char Offsets | ✅ Completed |
+| 7-Section Strategic Counter-Proposal Synthesis | ✅ Completed |
+| React 19 Frontend with Findings & Proposal Editor | ✅ Completed |
+| 210 Automated Pytest Tests | ✅ 100% Passing |
