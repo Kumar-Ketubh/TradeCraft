@@ -1,5 +1,5 @@
 // frontend/src/components/changes/ChangeCard.jsx
-// Clean, spacious, minimal card design with breathing room and clear typography
+// Clean, spacious card design with unified diff inspection and LangGraph AI Analysis
 
 import { useState } from 'react';
 import Badge from '../ui/Badge';
@@ -7,7 +7,7 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import DiffViewer from './DiffViewer';
 import { api } from '../../services/api';
-import { ExternalLink, GitCompare, ArrowUpRight } from 'lucide-react';
+import { ExternalLink, GitCompare, Sparkles, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 const CATEGORY_MAP = {
   pricing_change: { variant: 'danger', label: 'Pricing Shift' },
@@ -22,20 +22,40 @@ const CATEGORY_MAP = {
 export default function ChangeCard({ change }) {
   const [showDiff, setShowDiff] = useState(false);
   const [diffDetail, setDiffDetail] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingDiff, setLoadingDiff] = useState(false);
+
+  // AI Analysis state
+  const [finding, setFinding] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
+  const [showFindingModal, setShowFindingModal] = useState(false);
 
   const handleViewDiff = async () => {
     setShowDiff(true);
     if (!diffDetail) {
-      setLoading(true);
+      setLoadingDiff(true);
       try {
         const detail = await api.changes.getById(change.id);
         setDiffDetail(detail);
       } catch (e) {
         console.error('Failed to load diff:', e);
       } finally {
-        setLoading(false);
+        setLoadingDiff(false);
       }
+    }
+  };
+
+  const handleAnalyzeWithAI = async () => {
+    setAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      const result = await api.findings.analyzeChange(change.id);
+      setFinding(result);
+      setShowFindingModal(true);
+    } catch (e) {
+      setAnalysisError(e.message || 'AI analysis failed');
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -64,6 +84,14 @@ export default function ChangeCard({ change }) {
             <Badge variant={change.is_meaningful ? meta.variant : 'neutral'}>
               {meta.label}
             </Badge>
+
+            {finding && (
+              <Badge variant={finding.verification_status === 'VERIFIED' ? 'success' : 'warning'}>
+                <ShieldCheck size={11} className="mr-1 inline" />
+                {finding.grounding_score}% EGA Verified
+              </Badge>
+            )}
+
             {change.source_url && (
               <a
                 href={change.source_url}
@@ -86,6 +114,33 @@ export default function ChangeCard({ change }) {
         {change.summary && (
           <div className="p-4 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-sm text-text leading-relaxed font-normal">
             {change.summary}
+          </div>
+        )}
+
+        {/* AI Finding Inline Preview if analyzed */}
+        {finding && (
+          <div className="p-4 rounded-lg bg-[var(--primary-bg)] border border-[var(--primary)] text-sm text-text space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--primary)] flex items-center gap-1">
+                <Sparkles size={13} />
+                AI Verified Intelligence: {finding.title}
+              </span>
+              <button
+                onClick={() => setShowFindingModal(true)}
+                className="text-xs text-[var(--primary)] underline hover:opacity-80"
+              >
+                View Full Evidence ({finding.evidence_quotes?.length || 0} quotes)
+              </button>
+            </div>
+            <p className="text-xs text-muted leading-relaxed">
+              <strong>Impact:</strong> {finding.impact_analysis}
+            </p>
+          </div>
+        )}
+
+        {analysisError && (
+          <div className="p-3 text-xs rounded bg-red-950/30 border border-red-800 text-red-300">
+            {analysisError}
           </div>
         )}
 
@@ -117,16 +172,29 @@ export default function ChangeCard({ change }) {
             )}
           </div>
 
-          {/* Action Trigger */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleViewDiff}
-            className="self-start sm:self-auto"
-          >
-            <GitCompare size={13} className="mr-1.5" />
-            <span>View Diff</span>
-          </Button>
+          {/* Action Triggers */}
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {change.is_meaningful && (
+              <Button
+                variant={finding ? 'secondary' : 'primary'}
+                size="sm"
+                onClick={handleAnalyzeWithAI}
+                disabled={analyzing}
+              >
+                <Sparkles size={13} className={`mr-1.5 ${analyzing ? 'animate-spin' : ''}`} />
+                <span>{analyzing ? 'Analyzing...' : finding ? 'Re-Analyze AI' : 'Analyze with AI'}</span>
+              </Button>
+            )}
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleViewDiff}
+            >
+              <GitCompare size={13} className="mr-1.5" />
+              <span>View Diff</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -136,7 +204,7 @@ export default function ChangeCard({ change }) {
         onClose={() => setShowDiff(false)}
         title={`Diff Inspection — ${change.competitor_name || 'Change'}`}
       >
-        {loading ? (
+        {loadingDiff ? (
           <div className="p-12 text-center text-muted text-sm flex flex-col items-center justify-center gap-3">
             <div className="w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
             <span>Loading unified diff...</span>
@@ -150,6 +218,85 @@ export default function ChangeCard({ change }) {
               </span>
             </div>
             <DiffViewer diffUnified={diffDetail?.diff_unified || ''} />
+          </div>
+        )}
+      </Modal>
+
+      {/* AI Intelligence Finding Modal */}
+      <Modal
+        isOpen={showFindingModal}
+        onClose={() => setShowFindingModal(false)}
+        title={`AI Intelligence Finding — ${finding?.title || ''}`}
+      >
+        {finding && (
+          <div className="space-y-5 text-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant={finding.verification_status === 'VERIFIED' ? 'success' : 'warning'}>
+                  {finding.verification_status}
+                </Badge>
+                <Badge variant="purple">{finding.category}</Badge>
+                <span className="text-xs text-muted font-medium">Confidence: {finding.confidence_level}</span>
+              </div>
+              <div className="text-xs font-semibold px-2.5 py-1 rounded bg-[var(--primary-bg)] text-[var(--primary)] border border-[var(--primary)]">
+                EGA Score: {finding.grounding_score}%
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Factual Observation</h4>
+              <p className="p-3 bg-[var(--bg)] rounded border border-[var(--border)] text-text leading-relaxed">
+                {finding.factual_summary}
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Strategic Impact</h4>
+              <p className="p-3 bg-[var(--bg)] rounded border border-[var(--border)] text-text leading-relaxed">
+                {finding.impact_analysis}
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Recommended Countermeasure</h4>
+              <p className="p-3 bg-[var(--bg)] rounded border border-[var(--border)] text-text leading-relaxed">
+                {finding.recommended_action}
+              </p>
+            </div>
+
+            {finding.critic_notes && (
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Critic Verification Notes</h4>
+                <p className="p-3 bg-[var(--bg)] rounded border border-[var(--border)] text-xs text-muted font-mono">
+                  {finding.critic_notes}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+                Grounded Verbatim Evidence ({finding.evidence_quotes?.length || 0})
+              </h4>
+              {finding.evidence_quotes && finding.evidence_quotes.length > 0 ? (
+                <div className="space-y-2">
+                  {finding.evidence_quotes.map((q, idx) => (
+                    <div key={q.id || idx} className="p-3 bg-[var(--bg)] rounded border-l-4 border-l-[var(--primary)] border border-[var(--border)] text-xs">
+                      <p className="italic font-serif text-text mb-1">"{q.verbatim_quote}"</p>
+                      <div className="flex items-center justify-between text-2xs text-muted">
+                        <span>Offset: {q.char_offset_start ?? 'N/A'} - {q.char_offset_end ?? 'N/A'}</span>
+                        {q.source_url && (
+                          <a href={q.source_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary underline">
+                            Source Link
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted italic">No verbatim quotes extracted.</p>
+              )}
+            </div>
           </div>
         )}
       </Modal>

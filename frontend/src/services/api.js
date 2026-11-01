@@ -1,5 +1,5 @@
 // frontend/src/services/api.js
-// TradeCraft Phase 2 — API Service Client
+// TradeCraft Phase 2 & 3 — API Service Client
 
 const API_BASE_URL = 'http://localhost:8001';
 
@@ -114,5 +114,34 @@ export const api = {
     },
     getById: (changeId) => request(`/changes/${changeId}`),
     listByScan: (scanId) => request(`/scans/${scanId}/changes`),
+  },
+
+  // Intelligence Findings (LangGraph Agent Pipeline)
+  findings: {
+    listByWorkspace: (workspaceId, params = {}) => {
+      const qs = new URLSearchParams();
+      if (params.category) qs.set('category', params.category);
+      if (params.confidence_level) qs.set('confidence_level', params.confidence_level);
+      if (params.verification_status) qs.set('verification_status', params.verification_status);
+      if (params.limit) qs.set('limit', params.limit);
+      if (params.offset) qs.set('offset', params.offset);
+      const query = qs.toString() ? `?${qs.toString()}` : '';
+      return request(`/workspaces/${workspaceId}/findings${query}`);
+    },
+    getById: (findingId) => request(`/findings/${findingId}`),
+    updateStatus: (findingId, status) =>
+      request(`/findings/${findingId}/status?status_update=${encodeURIComponent(status)}`, { method: 'PATCH' }),
+    analyzeChange: (changeId) => request(`/changes/${changeId}/analyze`, { method: 'POST' }),
+  },
+
+  // Proposals (Proposal Synthesis Engine)
+  proposals: {
+    listByWorkspace: (workspaceId) => request(`/workspaces/${workspaceId}/proposals`),
+    create: (workspaceId, data) =>
+      request(`/workspaces/${workspaceId}/proposals`, { method: 'POST', body: JSON.stringify(data) }),
+    getById: (proposalId) => request(`/proposals/${proposalId}`),
+    update: (proposalId, data) =>
+      request(`/proposals/${proposalId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (proposalId) => request(`/proposals/${proposalId}`, { method: 'DELETE' }),
   },
 };
