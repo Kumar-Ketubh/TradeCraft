@@ -44,3 +44,4 @@ class Snapshot(Base):
         back_populates="previous_snapshot",
         cascade="all, delete-orphan",
     )
+    quotes = relationship("EvidenceQuote", back_populates="snapshot", cascade="all, delete-orphan")

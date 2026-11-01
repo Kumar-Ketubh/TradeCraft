@@ -1,6 +1,6 @@
 # backend/db.py
 #
-# TradeCraft — Database Connection Helper (Phase 1)
+# TradeCraft - Database Connection Helper (Phase 1)
 #
 # PURPOSE:
 #   Provide a single function to test PostgreSQL reachability.
@@ -16,8 +16,12 @@
 #   This file is intentionally minimal for Phase 1.
 
 import os
-import psycopg2
 from dotenv import load_dotenv
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
 
 load_dotenv()
 
@@ -30,6 +34,9 @@ def check_db_connection() -> tuple[bool, str]:
         (True, "Connected") on success
         (False, <error message>) on failure
     """
+    if psycopg2 is None:
+        return False, "psycopg2 is not installed (running in SQLite mode)"
+
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
     name = os.getenv("DB_NAME", "tradecraft")

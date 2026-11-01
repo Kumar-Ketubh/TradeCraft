@@ -39,6 +39,7 @@ class RssAdapter(BaseAdapter):
         for e in entries:
             clean_summary = re.sub(r"<[^>]+>", " ", e.get("summary", ""))
             clean_summary = clean_summary.replace("\xa0", " ")
+            clean_summary = re.sub(r"\s+([.,!?;:])", r"\1", clean_summary)
             clean_summary = re.sub(r"\s+", " ", clean_summary).strip()
 
             lines.append(f"Title: {e.get('title', '').strip()}")
@@ -138,20 +139,16 @@ class RssAdapter(BaseAdapter):
             # Published / Updated
             p_elem = (
                 item.find("atom:updated", ns)
-                if item.find("atom:updated", ns) is not None
-                else item.find("atom:published", ns)
-                if item.find("atom:published", ns) is not None
-                else next((e for e in item if e.tag.endswith("updated") or e.tag.endswith("published")), None)
+                or item.find("atom:published", ns)
+                or next((e for e in item if e.tag.endswith("updated") or e.tag.endswith("published")), None)
             )
             published = "".join(p_elem.itertext()).strip() if p_elem is not None else ""
 
             # Summary / Content
             s_elem = (
                 item.find("atom:summary", ns)
-                if item.find("atom:summary", ns) is not None
-                else item.find("atom:content", ns)
-                if item.find("atom:content", ns) is not None
-                else next((e for e in item if e.tag.endswith("summary") or e.tag.endswith("content")), None)
+                or item.find("atom:content", ns)
+                or next((e for e in item if e.tag.endswith("summary") or e.tag.endswith("content")), None)
             )
             summary = "".join(s_elem.itertext()).strip() if s_elem is not None else ""
 

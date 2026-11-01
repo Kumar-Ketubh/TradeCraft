@@ -6,5 +6,28 @@ from app.models.source import Source
 from app.models.scan_run import ScanRun
 from app.models.snapshot import Snapshot
 from app.models.change import Change
+from app.models.finding import (
+    IntelligenceFinding,
+    EvidenceQuote,
+    FindingCategory,
+    ConfidenceLevel,
+    VerificationStatus,
+)
+from app.models.proposal import Proposal, ProposalStatus
 
-__all__ = ["User", "Workspace", "Competitor", "Source", "ScanRun", "Snapshot", "Change"]
+__all__ = [
+    "User",
+    "Workspace",
+    "Competitor",
+    "Source",
+    "ScanRun",
+    "Snapshot",
+    "Change",
+    "IntelligenceFinding",
+    "EvidenceQuote",
+    "FindingCategory",
+    "ConfidenceLevel",
+    "VerificationStatus",
+    "Proposal",
+    "ProposalStatus",
+]

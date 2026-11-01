@@ -44,3 +44,4 @@ class Change(Base):
         foreign_keys=[current_snapshot_id],
         back_populates="changes",
     )
+    findings = relationship("IntelligenceFinding", back_populates="change", cascade="all, delete-orphan")
