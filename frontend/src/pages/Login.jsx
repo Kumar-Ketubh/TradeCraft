@@ -50,6 +50,29 @@ export default function Login() {
 
         {error && <div className="p-3 mb-4 text-sm text-danger bg-danger-bg rounded-md border border-danger">{error}</div>}
 
+        {/* Quick Admin Test Session Box */}
+        <div className="mb-5 p-3 rounded-md border border-border bg-surface-hover text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-semibold text-text flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-success"></span> Admin AI Pipeline Test Session
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('admin@tradecraft.com');
+                setPassword('admin');
+              }}
+              className="px-2 py-0.5 rounded text-xs font-medium bg-primary text-white hover:bg-primary-hover transition-colors"
+            >
+              Auto-fill
+            </button>
+          </div>
+          <div className="flex flex-col gap-0.5 text-muted font-mono text-[11px]">
+            <div>Email: <strong className="text-text font-normal">admin@tradecraft.com</strong></div>
+            <div>Password: <strong className="text-text font-normal">admin</strong></div>
+          </div>
+        </div>
+
         <div className="mb-6 flex justify-center w-full">
           <GoogleLogin 
             onSuccess={handleGoogleSuccess}

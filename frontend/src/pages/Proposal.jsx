@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import Badge from '../ui/Badge';
+import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -22,7 +22,13 @@ import {
   Trash2,
   AlertCircle,
   Inbox,
+  Maximize2,
+  Download,
+  Printer,
+  Copy,
+  Check,
 } from 'lucide-react';
+import ProposalReaderModal from '../components/proposals/ProposalReaderModal';
 
 export default function Proposal() {
   const { activeWorkspace } = useAuth();
@@ -30,6 +36,10 @@ export default function Proposal() {
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [copiedMain, setCopiedMain] = useState(false);
+
+  // Pop-Out Glass Modal State
+  const [showPopout, setShowPopout] = useState(false);
 
   // Proposal Generation Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -143,6 +153,57 @@ export default function Proposal() {
     }
   };
 
+  const handleSaveModalContent = async (proposalId, newContent) => {
+    const updated = await api.proposals.update(proposalId, {
+      markdown_content: newContent,
+    });
+    setProposals((prev) => prev.map((p) => (p.id === proposalId ? updated : p)));
+    if (selectedProposal?.id === proposalId) {
+      setSelectedProposal(updated);
+      setEditContent(newContent);
+    }
+  };
+
+  const handleToggleStatusFromModal = async (proposalId) => {
+    const current = proposals.find((p) => p.id === proposalId) || selectedProposal;
+    if (!current) return;
+    const newStatus = current.status === 'FINALIZED' ? 'DRAFT' : 'FINALIZED';
+    const updated = await api.proposals.update(proposalId, { status: newStatus });
+    setProposals((prev) => prev.map((p) => (p.id === proposalId ? updated : p)));
+    if (selectedProposal?.id === proposalId) {
+      setSelectedProposal(updated);
+    }
+  };
+
+  const downloadProposalMarkdown = (p = selectedProposal) => {
+    if (!p) return;
+    const cleanTitle = (p.title || 'tradecraft-proposal')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const filename = `${cleanTitle}.md`;
+    const blob = new Blob([p.markdown_content || ''], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyMain = async () => {
+    if (!selectedProposal?.markdown_content) return;
+    try {
+      await navigator.clipboard.writeText(selectedProposal.markdown_content);
+      setCopiedMain(true);
+      setTimeout(() => setCopiedMain(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
+
   const handleDelete = async (proposalId) => {
     if (!confirm('Are you sure you want to delete this proposal?')) return;
     try {
@@ -252,6 +313,7 @@ export default function Proposal() {
                     onClick={() => {
                       setSelectedProposal(p);
                       setIsEditing(false);
+                      setShowPopout(true);
                     }}
                     className={`py-3 px-3 cursor-pointer rounded-lg transition-colors flex flex-col gap-1.5 ${
                       isSelected
@@ -280,16 +342,28 @@ export default function Proposal() {
                         <Calendar size={11} />
                         {dateStr}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(p.id);
-                        }}
-                        className="text-muted hover:text-red-400 opacity-60 hover:opacity-100"
-                        title="Delete proposal"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadProposalMarkdown(p);
+                          }}
+                          className="text-muted hover:text-primary opacity-60 hover:opacity-100 p-0.5 rounded transition-colors"
+                          title="Download .md file"
+                        >
+                          <Download size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(p.id);
+                          }}
+                          className="text-muted hover:text-red-400 opacity-60 hover:opacity-100 p-0.5 rounded transition-colors"
+                          title="Delete proposal"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -299,11 +373,28 @@ export default function Proposal() {
 
           {/* Selected Proposal Reader / Editor */}
           {selectedProposal && (
-            <div className="card p-6 space-y-5 lg:col-span-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--border)]">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-lg font-bold text-text m-0">
+            <div
+              className={`card p-6 space-y-5 lg:col-span-2 transition-all duration-200 ${
+                isEditing ? 'border-neutral-800' : ''
+              }`}
+              style={
+                isEditing
+                  ? { backgroundColor: '#000000', color: '#ffffff', borderColor: '#262626' }
+                  : {}
+              }
+            >
+              <div
+                className={`flex flex-col xl:flex-row xl:items-start justify-between gap-4 pb-4 border-b ${
+                  isEditing ? 'border-neutral-800' : 'border-[var(--border)]'
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h2
+                      className={`text-lg font-bold m-0 truncate ${
+                        isEditing ? 'text-white' : 'text-text'
+                      }`}
+                    >
                       {selectedProposal.title}
                     </h2>
                     <Badge
@@ -313,32 +404,101 @@ export default function Proposal() {
                     </Badge>
                   </div>
                   {selectedProposal.target_goal && (
-                    <p className="text-xs text-muted flex items-center gap-1.5">
-                      <Target size={13} className="text-[var(--primary)]" />
-                      <strong>Goal:</strong> {selectedProposal.target_goal}
+                    <p
+                      className={`text-xs flex items-center gap-1.5 ${
+                        isEditing ? 'text-neutral-400' : 'text-muted'
+                      }`}
+                    >
+                      <Target size={13} className="text-[var(--primary)] shrink-0" />
+                      <span className="truncate"><strong>Goal:</strong> {selectedProposal.target_goal}</span>
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto">
+                <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowPopout(true)}
+                    className="text-xs px-2.5 py-1 whitespace-nowrap"
+                    title="Pop out in full browser glass window"
+                  >
+                    <Maximize2 size={13} className="mr-1" />
+                    <span>Pop Out</span>
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => downloadProposalMarkdown(selectedProposal)}
+                    className={`text-xs px-2.5 py-1 whitespace-nowrap ${isEditing ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-900' : ''}`}
+                    title="Download proposal as Markdown (.md)"
+                  >
+                    <Download size={13} className="mr-1" />
+                    <span>Download</span>
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => window.print()}
+                    className={`text-xs px-2.5 py-1 whitespace-nowrap ${isEditing ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-900' : ''}`}
+                    title="Export or print PDF"
+                  >
+                    <Printer size={13} className="mr-1" />
+                    <span>PDF</span>
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCopyMain}
+                    className={`text-xs px-2.5 py-1 whitespace-nowrap ${isEditing ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-900' : ''}`}
+                    title="Copy markdown to clipboard"
+                  >
+                    {copiedMain ? (
+                      <>
+                        <Check size={13} className="mr-1 text-success" />
+                        <span className="text-success">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} className="mr-1" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </Button>
+
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={handleToggleStatus}
+                    className={`text-xs px-2.5 py-1 whitespace-nowrap ${isEditing ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-900' : ''}`}
                   >
-                    {selectedProposal.status === 'FINALIZED' ? 'Mark Draft' : 'Finalize'}
+                    {selectedProposal.status === 'FINALIZED' ? 'Draft' : 'Finalize'}
                   </Button>
 
                   {isEditing ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleSaveEdit}
-                      disabled={savingEdit}
-                    >
-                      <Save size={13} className="mr-1" />
-                      <span>{savingEdit ? 'Saving...' : 'Save'}</span>
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setIsEditing(false)}
+                        className="text-xs px-2.5 py-1 border-neutral-700 text-neutral-300 hover:bg-neutral-900"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSaveEdit}
+                        disabled={savingEdit}
+                        className="text-xs px-2.5 py-1"
+                      >
+                        <Save size={13} className="mr-1" />
+                        <span>{savingEdit ? 'Saving...' : 'Save'}</span>
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       variant="secondary"
@@ -347,6 +507,7 @@ export default function Proposal() {
                         setEditContent(selectedProposal.markdown_content);
                         setIsEditing(true);
                       }}
+                      className="text-xs px-2.5 py-1 whitespace-nowrap"
                     >
                       <Edit3 size={13} className="mr-1" />
                       <span>Edit</span>
@@ -355,22 +516,39 @@ export default function Proposal() {
                 </div>
               </div>
 
-              {/* Proposal Content Body */}
+              {/* Proposal Content Body with bounded scroll */}
               {isEditing ? (
                 <div className="space-y-2">
-                  <span className="text-xs text-muted">Edit Markdown Source:</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-neutral-400 font-medium">Edit Markdown Source:</span>
+                    <span className="text-2xs text-neutral-500 font-mono">Editor Theme: Black</span>
+                  </div>
                   <textarea
-                    rows={22}
+                    rows={18}
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
-                    className="w-full font-mono text-xs p-4 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-text outline-none focus:border-primary transition-colors leading-relaxed"
+                    className="w-full font-mono text-xs p-4 rounded-lg outline-none focus:border-primary transition-colors leading-relaxed glass-scroll"
+                    style={{
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      border: '1px solid #262626',
+                      maxHeight: '520px',
+                    }}
+                    placeholder="Enter proposal markdown content..."
                   />
                 </div>
               ) : (
-                <div className="prose prose-invert max-w-none text-xs leading-relaxed space-y-4">
-                  <div
-                    className="bg-[var(--bg)] p-6 rounded-xl border border-[var(--border)] whitespace-pre-wrap font-sans text-text space-y-3 leading-relaxed"
-                  >
+                <div
+                  className="glass-scroll p-6 rounded-xl border border-[var(--border)] bg-[var(--bg)] text-text space-y-4 text-xs leading-relaxed"
+                  style={{
+                    height: '520px',
+                    maxHeight: '520px',
+                    overflowY: 'scroll',
+                    scrollBehavior: 'smooth',
+                    overscrollBehavior: 'contain',
+                  }}
+                >
+                  <div className="whitespace-pre-wrap font-sans space-y-3 leading-relaxed">
                     {selectedProposal.markdown_content}
                   </div>
                 </div>
@@ -403,7 +581,8 @@ export default function Proposal() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Counter-Strategy to Competitor Commercial Tiering"
-              className="w-full text-xs p-2.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-text outline-none focus:border-primary"
+              className="w-full text-xs p-2.5 rounded-md border border-[var(--border)] text-black placeholder:text-gray-500 outline-none focus:border-primary"
+              style={{ color: '#000000', backgroundColor: '#ffffff' }}
             />
           </div>
 
@@ -416,7 +595,8 @@ export default function Proposal() {
               value={targetGoal}
               onChange={(e) => setTargetGoal(e.target.value)}
               placeholder="e.g. Prevent entry-tier churn & update sales battlecard"
-              className="w-full text-xs p-2.5 rounded-md bg-[var(--bg)] border border-[var(--border)] text-text outline-none focus:border-primary"
+              className="w-full text-xs p-2.5 rounded-md border border-[var(--border)] text-black placeholder:text-gray-500 outline-none focus:border-primary"
+              style={{ color: '#000000', backgroundColor: '#ffffff' }}
             />
           </div>
 
@@ -482,6 +662,15 @@ export default function Proposal() {
           </div>
         </form>
       </Modal>
+
+      {/* Pop-Out Glass Reader & Export Modal */}
+      <ProposalReaderModal
+        isOpen={showPopout}
+        onClose={() => setShowPopout(false)}
+        proposal={selectedProposal}
+        onSaveContent={handleSaveModalContent}
+        onToggleStatus={handleToggleStatusFromModal}
+      />
     </div>
   );
 }
