@@ -1,7 +1,8 @@
 # backend/main.py
 #
-# TradeCraft API Backend — Phase 2: Core Management
-# FastAPI + PostgreSQL (SQLAlchemy) + JWT Authentication
+# TradeCraft API Backend — Phase 2 & 3: Core Management & AI Intelligence
+# FastAPI + PostgreSQL / SQLite (SQLAlchemy) + JWT Authentication + LangGraph
+#
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +10,16 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db.database import create_db_engine, Base
-from app.routers import auth, workspaces, competitors, sources, scans, changes
+from app.routers import (
+    auth,
+    workspaces,
+    competitors,
+    sources,
+    scans,
+    changes,
+    findings,
+    proposals,
+)
 from db import check_db_connection
 
 # Ensure tables are created if database is reachable
@@ -21,7 +31,7 @@ except Exception as e:
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="TradeCraft Phase 2 Backend — Auth, Workspaces, Competitors & Sources",
+    description="TradeCraft Phase 2 & 3 Backend — Auth, Workspaces, Competitors, Ingestion, LangGraph AI & Proposals",
     version=settings.VERSION,
 )
 
@@ -41,12 +51,14 @@ app.include_router(competitors.router)
 app.include_router(sources.router)
 app.include_router(scans.router)
 app.include_router(changes.router)
+app.include_router(findings.router)
+app.include_router(proposals.router)
 
 
 @app.get("/health", summary="Health check")
 def health():
     """
-    Returns current health status of FastAPI backend and PostgreSQL database.
+    Returns current health status of FastAPI backend and database.
     """
     db_ok = False
     db_msg = ""
@@ -63,6 +75,6 @@ def health():
         "backend": "ok",
         "database": "ok" if db_ok else "error",
         "database_message": db_msg,
-        "ai_workflow": "not_connected",
+        "ai_workflow": "active",
         "phase": settings.PHASE,
     }

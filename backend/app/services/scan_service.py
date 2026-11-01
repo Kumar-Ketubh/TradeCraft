@@ -234,8 +234,20 @@ class ScanService:
         # Run change detection across all newly created successful snapshots
         try:
             change_service = ChangeDetectionService(db=self.db)
+            detected_changes = []
             for snap in successful_snapshots:
-                change_service.detect_change_for_snapshot(snap)
+                change = change_service.detect_change_for_snapshot(snap)
+                if change:
+                    detected_changes.append(change)
+
+            # Auto-trigger agent pipeline for meaningful changes
+            for change in detected_changes:
+                if change.is_meaningful:
+                    try:
+                        from app.services.agents.graph import run_agent_pipeline
+                        run_agent_pipeline(change_id=change.id, db=self.db)
+                    except Exception as pipe_err:
+                        logger.warning("Agent pipeline execution skipped for change %s: %s", change.id, pipe_err)
         except Exception as exc:
             logger.warning(f"Change detection error during scan batch: {exc}")
 
