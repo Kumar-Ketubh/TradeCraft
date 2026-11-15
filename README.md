@@ -4,6 +4,26 @@
 
 An agentic competitive-intelligence platform that monitors competitor changes, investigates their significance, verifies supporting evidence, and generates actionable insights and project proposals.
 
+---
+
+### 🚀 Live Production Deployment
+
+| Service | Environment | URL |
+|---|---|---|
+| **Frontend Web App** | Vercel (Edge CDN) | **[https://trade-craft-sage.vercel.app](https://trade-craft-sage.vercel.app)** |
+| **Backend API** | Render (FastAPI) | **[https://tradecraft-xax5.onrender.com](https://tradecraft-xax5.onrender.com)** |
+| **Interactive API Docs** | Swagger / OpenAPI | **[https://tradecraft-xax5.onrender.com/docs](https://tradecraft-xax5.onrender.com/docs)** |
+| **System Health Check** | Render + Supabase | **[https://tradecraft-xax5.onrender.com/health](https://tradecraft-xax5.onrender.com/health)** |
+| **Cloud Database** | Supabase PostgreSQL 17 | Connection Pooler (IPv4) |
+
+#### 🔑 Demo Login Credentials
+- **URL**: [https://trade-craft-sage.vercel.app/login](https://trade-craft-sage.vercel.app/login)
+- **Email**: `admin@tradecraft.com`
+- **Password**: `admin`
+*(Includes pre-seeded workspace, 4 competitors, 14 classified changes, 10 findings with $EGA \ge 96.5\%$, and 7-section counter-proposal)*
+
+---
+
 ## Overview
 
 Teams often monitor competitors manually across pricing pages, product pages, changelogs, blogs, public repositories, and announcements.

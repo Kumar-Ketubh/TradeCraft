@@ -1,83 +1,65 @@
 # TradeCraft Backend
 
-## Technology Status
+FastAPI + LangGraph agentic backend powering **TradeCraft**. Connects to Supabase PostgreSQL, executes multi-node agentic pipelines, enforces evidence grounding, and synthesizes strategic project proposals.
 
-> **The final backend technology (FastAPI vs Node.js) is TBD.**
->
-> FastAPI is used here as a temporary scaffold to unblock frontend development
-> and provide health checks. The final decision will be documented in
-> `docs/architecture.md` once the team evaluates both options.
+---
 
-## Phase 1 — What is implemented
+## 🚀 Live Production Deployment
 
-- `GET /health` — returns backend status and PostgreSQL reachability
+- **Base API URL**: **[https://tradecraft-xax5.onrender.com](https://tradecraft-xax5.onrender.com)**
+- **Interactive Swagger Docs**: **[https://tradecraft-xax5.onrender.com/docs](https://tradecraft-xax5.onrender.com/docs)**
+- **Health Check**: **[https://tradecraft-xax5.onrender.com/health](https://tradecraft-xax5.onrender.com/health)**
+- **Frontend App**: **[https://trade-craft-sage.vercel.app](https://trade-craft-sage.vercel.app)**
 
-## What is NOT implemented yet
+---
 
-- Authentication
-- Competitor management APIs
-- Source configuration APIs
-- Scan execution
-- Change detection
-- LangGraph / LLM integration
+## Core Capabilities
 
-These belong to later phases.
+- **Modular REST APIs**: Clean domain separation across `/auth`, `/workspaces`, `/competitors`, `/sources`, `/scans`, `/changes`, `/findings`, and `/proposals`.
+- **Cloud Database (Supabase PostgreSQL)**: 10 relational tables provisioned with connection pooling, SSL enforcement, and IPv4 Supavisor support.
+- **LangGraph Agent Workflow**: Stateful 3-node graph (`Context Researcher` → `Impact Analyzer` → `Critic / Verifier`) with automatic retry loops and EGA enforcement ($EGA \ge 85\%$).
+- **Deterministic Diff Engine**: Myers diff algorithm with SHA-256 change hashing and meaningfulness classification.
+- **Strategic Proposal Generator**: 7-Section executive counter-proposals citing only verified evidence.
 
-## Setup
+---
 
-### 1. Create a virtual environment
+## Local Setup
+
+### 1. Virtual Environment & Dependencies
 
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate      # macOS / Linux
-# venv\Scripts\activate       # Windows
-```
-
-### 2. Install dependencies
-
-```bash
+source venv/bin/activate # or .\venv\Scripts\activate on Windows
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment variables
+### 2. Environment Variables
 
-```bash
-cp .env.example .env
-# Edit .env with your PostgreSQL credentials
+Create `.env` in `backend/`:
+
+```ini
+PROJECT_NAME="TradeCraft API"
+VERSION="0.3.0"
+JWT_SECRET="tradecraft-secret-jwt-key"
+DATABASE_URL="postgresql://postgres.ptalxyofynhiszkisuay:adityakochar2006@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
+LLM_PROVIDER="mock" # or "gemini", "groq", "ollama"
+GEMINI_API_KEY=""
 ```
 
-### 4. Start the server
+### 3. Start Local Server
 
 ```bash
 uvicorn main:app --port 8001 --reload
 ```
 
-The server runs at: `http://localhost:8000`
+---
 
-### 5. Test the health endpoint
+## Automated Tests
+
+Run the full 210-test suite:
 
 ```bash
-curl http://localhost:8000/health
+pytest -v
 ```
-
-Expected response (with DB connected):
-
-```json
-{
-  "backend": "ok",
-  "database": "ok",
-  "database_message": "Connected",
-  "ai_workflow": "not_connected",
-  "phase": "Phase 1 — Project Foundation"
-}
-```
-
-If the database is not configured yet, `database` will be `"error"` — this is expected.
-
-## API Docs
-
-FastAPI auto-generates interactive docs at:
-
-- `http://localhost:8001/docs` (Swagger UI)
-- `http://localhost:8001/redoc`
+All 210 tests pass deterministically without network dependencies.
