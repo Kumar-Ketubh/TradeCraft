@@ -17,16 +17,31 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
 def create_db_engine(url: str = None):
     db_url = url or os.getenv("DATABASE_URL") or settings.DATABASE_URL
+    if not db_url:
+        db_url = "sqlite:///./tradecraft.db"
+
+    # Supabase and other cloud providers often provide URLs starting with postgres://
+    # SQLAlchemy requires postgresql://
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+
     if db_url.startswith("sqlite"):
         return create_engine(
             db_url,
             connect_args={"check_same_thread": False}
         )
+
+    # PostgreSQL / Supabase
+    connect_args = {}
+    if "supabase.co" in db_url or "pooler.supabase.com" in db_url:
+        connect_args["sslmode"] = "require"
+
     return create_engine(
         db_url,
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
+        connect_args=connect_args,
     )
 
 Base = declarative_base()

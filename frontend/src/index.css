@@ -81,7 +81,14 @@ body {
 a { color: var(--primary); text-decoration: none; outline: none; }
 a:hover { text-decoration: underline; }
 ul { list-style: none; }
-button { cursor: pointer; font-family: inherit; outline: none; }
+button {
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
 
 /* Utilities */
 .text-muted { color: var(--muted); }
@@ -581,26 +588,8 @@ button { cursor: pointer; font-family: inherit; outline: none; }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Print Optimization for PDF Export */
+/* Print Optimization */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .printable-proposal, .printable-proposal * {
-    visibility: visible;
-  }
-  .printable-proposal {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 2.5rem;
-    background: #ffffff !important;
-    color: #111827 !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
   .no-print {
     display: none !important;
   }

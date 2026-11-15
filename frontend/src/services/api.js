@@ -1,7 +1,9 @@
 // frontend/src/services/api.js
 // TradeCraft Phase 2 & 3 — API Service Client
 
-const API_BASE_URL = 'http://localhost:8001';
+const API_BASE_URL = import.meta.env.VITE_API_URL !== undefined 
+  ? import.meta.env.VITE_API_URL 
+  : (import.meta.env.DEV ? 'http://localhost:8001' : '');
 
 export function getAuthToken() {
   return localStorage.getItem('tradecraft_token');
