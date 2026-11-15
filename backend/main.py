@@ -55,6 +55,18 @@ app.include_router(findings.router)
 app.include_router(proposals.router)
 
 
+
+@app.get("/", summary="Root status")
+def root():
+    return {
+        "name": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health", summary="Health check")
 def health():
     """

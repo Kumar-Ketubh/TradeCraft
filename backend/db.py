@@ -37,6 +37,19 @@ def check_db_connection() -> tuple[bool, str]:
     if psycopg2 is None:
         return False, "psycopg2 is not installed (running in SQLite mode)"
 
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        try:
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            conn = psycopg2.connect(db_url, connect_timeout=5)
+            conn.close()
+            return True, "Connected"
+        except psycopg2.OperationalError as e:
+            return False, str(e).strip()
+        except Exception as e:
+            return False, f"Unexpected error: {str(e)}"
+
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
     name = os.getenv("DB_NAME", "tradecraft")
@@ -44,7 +57,7 @@ def check_db_connection() -> tuple[bool, str]:
     password = os.getenv("DB_PASSWORD", "")
 
     if not user:
-        return False, "DB_USER environment variable not set"
+        return False, "DATABASE_URL environment variable is not configured"
 
     try:
         conn = psycopg2.connect(
