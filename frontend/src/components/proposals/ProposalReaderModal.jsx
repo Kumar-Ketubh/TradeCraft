@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
+import { exportProposalToPDF } from '../../utils/pdfExport';
 import {
   X,
   Download,
@@ -78,7 +79,7 @@ export default function ProposalReaderModal({
 
   // 2. Export / Print to PDF
   const handlePrintPDF = () => {
-    window.print();
+    exportProposalToPDF(proposal);
   };
 
   // 3. Copy to Clipboard

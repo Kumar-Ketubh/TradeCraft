@@ -29,6 +29,7 @@ import {
   Check,
 } from 'lucide-react';
 import ProposalReaderModal from '../components/proposals/ProposalReaderModal';
+import { exportProposalToPDF } from '../utils/pdfExport';
 
 export default function Proposal() {
   const { activeWorkspace } = useAuth();
@@ -342,26 +343,30 @@ export default function Proposal() {
                         <Calendar size={11} />
                         {dateStr}
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             downloadProposalMarkdown(p);
                           }}
-                          className="text-muted hover:text-primary opacity-60 hover:opacity-100 p-0.5 rounded transition-colors"
+                          className="p-1 rounded text-muted hover:text-primary hover:bg-white/10 dark:hover:bg-white/10 transition-colors flex items-center justify-center cursor-pointer opacity-70 hover:opacity-100"
+                          style={{ border: 'none', background: 'transparent' }}
                           title="Download .md file"
                         >
-                          <Download size={12} />
+                          <Download size={13} />
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(p.id);
                           }}
-                          className="text-muted hover:text-red-400 opacity-60 hover:opacity-100 p-0.5 rounded transition-colors"
+                          className="p-1 rounded text-muted hover:text-red-400 hover:bg-white/10 dark:hover:bg-white/10 transition-colors flex items-center justify-center cursor-pointer opacity-70 hover:opacity-100"
+                          style={{ border: 'none', background: 'transparent' }}
                           title="Delete proposal"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -441,7 +446,7 @@ export default function Proposal() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => window.print()}
+                    onClick={() => exportProposalToPDF(selectedProposal)}
                     className={`text-xs px-2.5 py-1 whitespace-nowrap ${isEditing ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-900' : ''}`}
                     title="Export or print PDF"
                   >
