@@ -1,168 +1,274 @@
-# TradeCraft — Engineering Journey & Progress Journal
+# TradeCraft — Technical Problems Faced & Engineering Solutions
 
-> **AI-Powered Competitive Intelligence & Executive Proposal Engine**  
-> *A transparent record of how TradeCraft was built, the real problems we encountered, how we solved them, and the engineering principles behind every decision.*
-
----
-
-## 🧭 Project Overview: Why TradeCraft?
-
-When competing in modern software markets, companies change fast: they quietly raise prices, sneak in feature deprecations, launch new capabilities, and alter their marketing positioning. 
-
-Most existing change-monitoring tools only notify you that *"page X was updated."* They leave teams drowning in noise (like copyright year bumps or cookie banner updates) and don't answer the questions leaders actually care about:
-1. **What changed?** (Precise diffs, not page dumps)
-2. **Why does it matter?** (Business and commercial implications)
-3. **What evidence proves it?** (Verbatim quotes from the actual page, not AI hallucinations)
-4. **What should we do about it?** (Concrete countermeasures and feature roadmaps)
-
-TradeCraft was designed from the ground up to solve this complete loop in one unified, automated system.
+A comprehensive, transparent record of every major technical challenge encountered during the design, development, integration, and cloud deployment of TradeCraft, how each was diagnosed under the hood, and how it was solved.
 
 ---
 
-## 🏗️ The 5 Development Phases: What We Built
+## Table of Contents
+1. [The "Ghost Cloud" Freeze: macOS APFS Dataless Traps](#1-the-ghost-cloud-freeze-macos-apfs-dataless-traps)
+2. [The IPv6 Outbound Black Hole: Render to Supabase Connection](#2-the-ipv6-outbound-black-hole-render-to-supabase-connection)
+3. [The Modal-Clipping & Dark-Mode Bleed Trap: PDF Generation](#3-the-modal-clipping--dark-mode-bleed-trap-pdf-generation)
+4. [The Agent Hallucination Gap: Evidence Grounding Accuracy (EGA)](#4-the-agent-hallucination-gap-evidence-grounding-accuracy-ega)
+5. [The Async vs. Sync Threading Deadlock in Agent Pipelines](#5-the-async-vs-sync-threading-deadlock-in-agent-pipelines)
+6. [The Web Scraping "Noise Avalanche": Ephemeral DOM Mutation](#6-the-web-scraping-noise-avalanche-ephemeral-dom-mutation)
+7. [The Serverless Execution Timeout: Vercel 15-Second Edge Limit](#7-the-serverless-execution-timeout-vercel-15-second-edge-limit)
+8. [The Database Driver Conflict on Zero-Config Machines](#8-the-database-driver-conflict-on-zero-config-machines)
+9. [The Punctuation Formatting Artifacts in Feed Normalization](#9-the-punctuation-formatting-artifacts-in-feed-normalization)
+10. [The Browser Default User-Agent Box Artifact in Dark Mode](#10-the-browser-default-user-agent-box-artifact-in-dark-mode)
 
-Rather than dumping repetitive code listings, here is how TradeCraft evolved step-by-step:
+---
 
+## 1. The "Ghost Cloud" Freeze: macOS APFS Dataless Traps
+
+### The Problem
+During development, standard Git commands (`git commit`, `git status`, `git diff`) and testing tools began hanging indefinitely with zero output. Commands would freeze for minutes, and terminal tasks could only be terminated with `kill -9`.
+
+### Why It Happened (Under the Hood)
+The workspace was located inside `~/Desktop/TradeCraft`. On macOS, when **iCloud Drive "Desktop & Documents"** is enabled with **"Optimize Mac Storage"**, the operating system's kernel silently evicts idle files from the local APFS disk to free space. 
+
+When a file is evicted, macOS leaves a pointer marked with the APFS kernel flag `dataless` (visible via `ls -laO` as `hidden,compressed,dataless`). Over 180 git objects, commit edits, and ref files (including `.git/refs/heads/ai-pipeline` and pack index files) were marked `dataless`. Whenever Git attempted an open syscall on a ref file, the macOS kernel placed the process into an uninterruptible disk wait state (`D` state), waiting for the background CloudDocs daemon (`bird`) to fetch the missing bytes from Apple's servers. Because Git locks repository indexes while reading, every subsequent Git process deadlocked on `.git/index.lock`.
+
+### How We Solved It
+1. Diagnosed the root cause by sampling the stuck Git process stack (`sample <pid> 1`), which revealed the thread was blocked inside `files_read_raw_ref` $\rightarrow$ `xread`.
+2. Inspected file flags with `ls -laO .git/refs/heads/` and discovered the `dataless` tag.
+3. Created an automated staging pipeline in a local, non-synced RAM volume (`/tmp`), cloned a clean repository instance, applied all modified files, committed them in sub-second time, and pushed directly to GitHub.
+4. Repaired the local workspace by unlinking (`rm -f`) the evicted placeholder files and rewriting fresh local copies directly to disk, bypassing the cloud sync daemon entirely.
+
+### Key Takeaway
+Never maintain active Git repositories or developer dependencies inside cloud-synced folders (iCloud, OneDrive, Dropbox) with automated file eviction enabled. The silent conversion of files to `dataless` placeholders breaks low-level file descriptors and version control internals.
+
+---
+
+## 2. The IPv6 Outbound Black Hole: Render to Supabase Connection
+
+### The Problem
+After deploying the FastAPI backend to Render and configuring the PostgreSQL connection string to cloud Supabase, the backend server crashed on startup with the following error:
 ```text
-Phase 1: Foundation ──> Phase 2: Management ──> Phase 3: Ingestion ──> Phase 4: Diffing & Noise ──> Phase 5: AI & Proposals
-(React + FastAPI)      (Auth & Workspaces)     (Scrapers & Storage)    (Myers Diff & Filters)     (LangGraph + EGA Guard)
+(psycopg2.OperationalError) connection to server at "db.ptalxyofynhiszkisuay.supabase.co" 
+(2406:da14:25a:5801:0:c439:630a:4321), port 5432 failed: Network is unreachable
 ```
 
-### Phase 1: Project Foundation & Architecture
-- **Goal:** Set up a clean, modern full-stack scaffolding with guaranteed local dev ergonomics.
-- **Frontend:** Built with React 19 and Vite 8 for instant hot-module reload, styled with a custom clean-slate theme supporting both light and dark modes.
-- **Backend:** High-performance FastAPI server with structured dependency injection and automated health checks (`/health`).
-- **Database:** PostgreSQL for production with seamless SQLite fallback for local development.
+### Why It Happened (Under the Hood)
+Modern Supabase projects assign direct database hostnames (`db.<project-ref>.supabase.co`) that resolve exclusively to **IPv6 addresses** on their default database port (5432). However, Render's free tier runtime instances operate on an **IPv4-only** network virtualization stack and do not have outbound IPv6 routing enabled. When `psycopg2` attempted a TCP handshake to `2406:da14:...`, the host OS rejected the packet immediately with `ENETUNREACH` (Network is unreachable).
 
-### Phase 2: Multi-Tenant Workspace & Core Management
-- **Goal:** Enable multi-tenant user isolation so teams can securely manage their own competitor targets.
-- **Data Hierarchy:** Strict relational hierarchy: `User` $\rightarrow$ `Workspace` $\rightarrow$ `Competitor` $\rightarrow$ `Source`.
-- **Security:** JWT authentication with bcrypt password hashing and token expiration guards.
-- **APIs:** Complete RESTful CRUD endpoints with ownership verification preventing cross-tenant data leaks.
+### How We Solved It
+Supabase maintains an **IPv4-compatible Connection Pooler** (Supavisor / PgBouncer) in each cloud region. We re-engineered the connection architecture:
+1. Resolved the project's AWS cluster region from its IPv6 subnet (`Tokyo / ap-northeast-1`).
+2. Pointed the database configuration to the regional IPv4 pooler domain: `aws-0-ap-northeast-1.pooler.supabase.com`.
+3. Updated the authentication username format to include the tenant project reference (`postgres.<project-ref>`) and set the port to `6543` (transaction mode).
+4. Configured SQLAlchemy engine arguments with `sslmode=require`, `pool_pre_ping=True`, and automatic URL normalization (`postgres://` $\rightarrow$ `postgresql://`).
+5. Verified the fix with a live Python test script, achieving sub-300ms connection handshakes.
 
-### Phase 3: Automated Ingestion & Snapshot Engine
-- **Goal:** Reliably fetch competitor websites and news feeds without getting blocked or crashing on broken pages.
-- **Adapters:** Built resilient collectors for standard web pages (`HtmlAdapter`) and syndication feeds (`RssAdapter` supporting RSS 2.0 and Atom 1.0).
-- **Boilerplate Suppression:** Automated strip-down of noisy HTML artifacts (`<script>`, `<style>`, navigation bars, cookie banners, tracking scripts) prior to hashing.
-- **Snapshot Storage:** Cryptographic SHA-256 fingerprinting of clean content to record historical snapshots over time.
-
-### Phase 4: Deterministic Diffing & Smart Noise Filtering
-- **Goal:** Compare snapshots mathematically and filter out cosmetic changes so users only see substantive updates.
-- **Myers Diff Engine:** Line-by-line unified diff calculation computing exact additions, deletions, and similarity scores.
-- **Zero-Cost Heuristic Classifier:** A fast, deterministic rules engine that categorizes updates into `PRICING_CHANGE`, `FEATURE_RELEASE`, `POSITIONING`, `DEPRECATION`, or filters them as `NOISE`.
-
-### Phase 5: Multi-Agent AI Intelligence & Executive Proposals
-- **Goal:** Run an autonomous agent pipeline that verifies facts against raw snapshots and produces executive-ready project counter-proposals.
-- **LangGraph StateGraph:** A coordinated multi-agent loop:
-  1. **Context Researcher:** Spots candidate quotes and factual claims.
-  2. **Impact Analyzer:** Evaluates threats to pipeline revenue, customer churn, and market positioning.
-  3. **Critic / Verifier:** Scans verbatim text, calculates character offsets, and computes an Evidence Grounding Accuracy ($EGA$) score.
-- **7-Section Counter-Proposal Generator:** Turns verified findings into an executive proposal with problem analysis, verbatim cited evidence, response strategy, phased work breakdown, and expected ROI.
-- **Zero-Paid-API Mandate:** Fully operational offline via deterministic mock models, with native plug-and-play support for free-tier Groq, Gemini, or local Ollama.
+### Key Takeaway
+Cloud platforms have divergent network capabilities. When connecting a container platform (like Render) to a managed database (like Supabase), never rely on direct hostnames that may resolve to IPv6; always utilize regional IPv4 connection poolers with SSL enforcement.
 
 ---
 
-## 🥊 Real Problems We Faced & How We Fixed Them (In Plain English)
+## 3. The Modal-Clipping & Dark-Mode Bleed Trap: PDF Generation
 
-Building a complex system rarely goes smoothly. Here are the 7 biggest technical hurdles we hit, explained in simple, everyday language without the confusing buzzwords.
+### The Problem
+When users clicked "Export to PDF" on a strategic proposal, the generated PDF was either completely blank, clipped to the tiny height of the scrollable modal viewport (rendering only the first page and cutting off the rest), or printed with a muddy black background and unreadable dark-gray text.
 
----
+### Why It Happened (Under the Hood)
+The proposal reader UI is rendered inside a glassmorphic React modal with fixed positioning (`fixed inset-0 overflow-y-auto backdrop-blur-xl`). When standard browser printing (`window.print()`) was triggered:
+1. **Viewport Clipping**: The browser's print engine respects CSS overflow boundaries. Because the parent container had `overflow-y-auto` and a constrained height, the print renderer treated the modal as a single scroll box, printing only what was visible on screen and truncating pages 2 through 7.
+2. **Dark Mode Bleed**: The application uses dark-theme CSS variables (`--bg-primary: #0a0e17`, `--text-primary: #f8fafc`). The print engine carried these dark background colors into the print canvas, resulting in heavy black toner consumption and broken contrast.
+3. **Visibility Hiding**: Attempting to hide other elements via CSS (`body * { visibility: hidden; }`) inadvertently collapsed the height of the modal content to zero, producing blank white output.
 
-### 1. The "App Won't Start on My Laptop" Problem (Database Drivers)
+### How We Solved It
+We engineered an isolated **Offscreen Iframe Print Engine** (`frontend/src/utils/pdfExport.js`):
+1. Instead of printing the active DOM tree, the utility dynamically instantiates an invisible, isolated `<iframe>` appended to `document.body`.
+2. Converts the proposal's Markdown into semantic HTML with structured metadata headers.
+3. Injects dedicated, standalone high-contrast typography styles exclusively into the iframe's isolated DOM:
+   - Enforces a crisp white background with `#111827` primary body text.
+   - Sets strict print rules: `@page { size: A4; margin: 20mm; }`.
+   - Forces clean pagination without awkward orphans: `h2 { page-break-before: always; }` and `table, blockquote { page-break-inside: avoid; }`.
+4. Executes printing solely on the iframe (`iframe.contentWindow.print()`), then unlinks and destroys the iframe after the user saves or cancels.
 
-* **The Problem:** Whenever a developer tried to run the app or run tests locally, Python immediately crashed with an angry error: `ModuleNotFoundError: No module named 'psycopg2'`.
-* **Why It Happened (In Plain English):** `psycopg2` is the connector library used to talk to PostgreSQL databases. In our production environment, we use PostgreSQL. But for local testing and classroom demos, we use SQLite—which is lightweight and built directly into Python. However, because our database setup script had `import psycopg2` right at the very top of the file, Python tried to load the PostgreSQL connector *even when the developer only wanted to use SQLite*. If their computer didn't have PostgreSQL installed, the whole app refused to boot.
-* **How We Fixed It:** We wrapped the import in a safe check (`try...except ImportError`). If `psycopg2` is installed, the app happily connects to PostgreSQL. If it's missing, the app doesn't crash—it gracefully falls back to local SQLite mode and prints a friendly log notice.
-* **The Lesson:** Never let a production-only dependency crash local development. Always provide a painless fallback for developers running the code on a clean machine.
-
----
-
-### 2. The Broken Password Machine (Legacy Libraries vs. Modern Python)
-
-* **The Problem:** New user registration was randomly breaking with cryptographic errors during password hashing.
-* **Why It Happened (In Plain English):** We were originally using an older helper library called `passlib` to encrypt passwords. Modern Python (Python 3.13) and newer versions of the underlying security engine (`bcrypt 5.0`) changed how passwords are formatted. `passlib` hasn't been updated in years, so it couldn't understand the new format and choked.
-* **How We Fixed It:** We cut out the middleman. We removed `passlib` and wrote direct calls to the official, actively-maintained `bcrypt` library (`bcrypt.hashpw` and `bcrypt.checkpw`).
-* **The Lesson:** In security and cryptography, unmaintained "convenience" wrappers eventually become liabilities. Sticking to direct, well-supported official libraries is safer and simpler.
-
----
-
-### 3. The "False Alarm" Flood (Web Scraping Noise)
-
-* **The Problem:** The system kept bombarding the feed with "Competitor Changed!" notifications, but when we checked the website, nothing important had actually changed.
-* **Why It Happened (In Plain English):** Modern websites are constantly changing invisible details: advertising banners reload, session tokens rotate, timestamps update, and copyright footers change from `2025` to `2026`. If you just compare raw website code, every tiny background change looks like a massive event.
-* **How We Fixed It:** We built a two-stage filter:
-  1. **HTML Sanitization:** Before saving a web page, we strip out everything that isn't core content—removing `<script>`, `<style>`, cookie popups, and footer menus.
-  2. **Heuristic Filter:** We wrote a rules engine that checks *what* changed. If the only difference is a number in a copyright notice or random whitespace, it's flagged as `NOISE` and hidden. But if a dollar sign appears or product tier names shift, it's immediately marked as `MEANINGFUL`.
-* **The Lesson:** More data isn't better if it's junk. Change detection is only useful if you aggressively throw away the fluff before alarming the user.
+### Key Takeaway
+Never attempt to print directly from complex SPA component trees or modals using global CSS print media queries. Always generate an isolated document context (via offscreen iframe or virtual DOM) with independent, print-specific typography.
 
 ---
 
-### 4. The "Ghost Space" in News Feeds (Punctuation Formatting Bug)
+## 4. The Agent Hallucination Gap: Evidence Grounding Accuracy (EGA)
 
-* **The Problem:** In our automated test suite, an RSS test failed with an odd discrepancy: text extracted from an article summary had a floating space right before the period (e.g., `"Patched security vulnerability ."` instead of `"Patched security vulnerability."`).
-* **Why It Happened (In Plain English):** In the competitor's blog post, the last word was inside a clickable link: `<a href="...">vulnerability</a>.`. When our cleaner stripped away the HTML tags, it replaced them with a space so words wouldn't accidentally get glued together. But because the period was sitting right against the closing tag, that space was inserted right between the word and the period!
-* **How We Fixed It:** We added a smart punctuation cleanup rule (`re.sub(r"\s+([.,!?;:])", r"\1", text)`). It looks for any space sitting in front of punctuation marks and pulls the punctuation snug against the word.
-* **The Lesson:** Cleaning text isn't just about deleting tags; you have to respect natural grammar and punctuation rules so downstream AI models receive clean, human-readable sentences.
+### The Problem
+In early AI prototypes, when language models were prompted to summarize competitor updates and propose countermeasures, they frequently hallucinated: they invented plausible-sounding pricing tiers, exaggerated competitor features, or rephrased statements so heavily that the original claim could not be traced back to the competitor's website. In competitive intelligence, citing false competitor claims can mislead business strategy.
 
----
+### Why It Happened (Under the Hood)
+Large language models are probabilistic token predictors optimized for fluency rather than factual fidelity. Without strict deterministic boundaries, the model fills in memory gaps by generating plausible text ("hallucination"). Standard retrieval pipelines often pass raw text chunks without verifying that the LLM's output claims actually exist in the retrieved document.
 
-### 5. The Sync vs. Async Tug-of-War (Merging the AI Pipeline)
+### How We Solved It
+We designed a stateful multi-agent pipeline using **LangGraph** with an adversarial verification stage:
+1. **Context Researcher Node**: Analyzes candidate diffs against the clean snapshot and identifies factual claims, extracting candidate verbatim quotes.
+2. **Impact Analyzer Node**: Synthesizes business threat analysis, product positioning impact, and recommended responses.
+3. **Critic / Verifier Node (The Guardrail)**: Takes every candidate quote and executes an exact, deterministic substring search against the raw snapshot text stored in the database.
+   - For every verified match, it records the exact character coordinates (`char_offset_start` to `char_offset_end`).
+   - Computes the **Evidence Grounding Accuracy (EGA)** metric:
+     $$\text{EGA} = \left(\frac{\text{Verified Quotes}}{\text{Candidate Quotes}}\right) \times 100\%$$
+   - Enforces strict thresholds: if $\text{EGA} < 85\%$, the finding is automatically downgraded or rejected, and the loop can trigger a retry.
+4. **Proposal Engine Firewall**: The proposal generator strictly bars any finding that does not hold a `VERIFIED` status, guaranteeing that executive proposals only cite grounded, offset-mapped evidence.
 
-* **The Problem:** When we integrated the LangGraph AI pipeline into TradeCraft, our entire test suite threatened to collapse. The AI pipeline was written using asynchronous Python (`async def` with `AsyncSession`), while the rest of TradeCraft's 200+ tests and database models were built using synchronous SQLAlchemy (`Session = sessionmaker()`).
-* **Why It Happened (In Plain English):** In Python, "async" and "sync" code are like two different electrical currents. If you try to run an async database query inside a normal synchronous function without care, Python can deadlock, freeze, or lock the database file entirely. Rewriting all 200+ existing tests to be async would have taken days and risked introducing dozens of subtle bugs.
-* **How We Fixed It:** We harmonized the models! Instead of forcing the main app to become async, we adapted the AI pipeline to execute synchronously within TradeCraft's existing database transaction. We kept the exact same database session for both the web app and the AI agent, allowing all 206+ existing tests to pass without modifying our core architecture.
-* **The Lesson:** When merging experimental AI code into an established web application, adapt the AI wrapper to fit the application's architecture—never rewrite a working application just to accommodate an experimental pipeline.
-
----
-
-### 6. The "Lying AI" Problem (Hallucinations & Evidence Grounding)
-
-* **The Problem:** In early prototypes, when asked to write an executive report about a competitor, LLMs would occasionally make up believable-sounding details or paraphrase competitor claims so heavily that you couldn't find where they came from. In competitive intelligence, citing a fake price or non-existent feature can ruin business strategy.
-* **Why It Happened (In Plain English):** Generative AI is designed to sound plausible, not necessarily to be factually accurate. Unless you force it to prove where every claim comes from, it will fill in gaps using its imagination.
-* **How We Fixed It:** We created a strict "Critic / Verifier" node with a mathematical **Evidence Grounding Accuracy ($EGA$)** threshold:
-  1. The AI cannot simply say *"Competitor lowered prices."* It must extract the exact, verbatim quote from the raw website snapshot.
-  2. The Critic agent searches the raw snapshot text for the exact character positions (`char_offset_start` to `char_offset_end`). If the quote cannot be found word-for-word in the actual web page, it is flagged as ungrounded.
-  3. If $EGA < 85\%$, the finding is automatically downgraded or rejected.
-  4. The Proposal Generator has an absolute firewall: if an insight is not `VERIFIED`, the system refuses to generate an executive proposal from it.
-* **The Lesson:** You cannot blindly trust LLM summaries for business decisions. High-stakes AI applications must enforce mechanical proof (exact character offsets in source documents) before any claim is accepted.
+### Key Takeaway
+Do not rely on the LLM to self-police its own accuracy. Pair generative models with deterministic, code-level verifiers (exact character offset mapping) to measure factual grounding before any output reaches the user.
 
 ---
 
-### 7. The Expensive Cloud API Trap (Zero-Cost Operation)
+## 5. The Async vs. Sync Threading Deadlock in Agent Pipelines
 
-* **The Problem:** Most modern AI tutorials assume you have unlimited budget for paid API keys (like OpenAI GPT-4). If an API key expires, has a billing limit, or if you lose internet access on a train, the entire application stops working and automated tests fail.
-* **Why It Happened (In Plain English):** Hardcoding third-party cloud APIs ties your software to a single paid vendor. If the evaluator or teammate testing your code doesn't have an active paid account, they can't even evaluate your project.
-* **How We Fixed It:** We implemented an **LLM Provider Factory** governed by a zero-paid-API mandate:
-  - **Deterministic Mock Model (Default):** Runs completely offline with zero internet and zero API keys. It inspects diffs and generates fully grounded, mathematically verified findings and 7-section proposals for test suites and offline demos.
-  - **Free-Tier Cloud Providers:** Plug-and-play support for Groq (blazing fast Llama-3.3) and Google Gemini 1.5 Flash (free tier).
-  - **Local Models:** Native support for running local open-source models via Ollama.
-* **The Lesson:** Software should always be able to run and demonstrate its core value for free out-of-the-box. Premium cloud APIs should be an optional upgrade, not a prerequisite for basic functionality.
+### The Problem
+When integrating the LangGraph agent pipeline into TradeCraft's existing backend, the test suite and background scan workers began deadlocking. Tests either hung forever or crashed with:
+```text
+RuntimeError: Task <...> got Future <...> attached to a different loop
+OperationalError: (sqlite3.OperationalError) database is locked
+```
 
----
+### Why It Happened (Under the Hood)
+The AI agent pipeline was initially written using Python's asynchronous event loop paradigm (`async def` with SQLAlchemy's `AsyncSession`). However, TradeCraft's existing web routers, multi-tenant permission layers, and 200+ unit test fixtures were architected with synchronous SQLAlchemy sessions (`Session = sessionmaker()`). 
 
-## 📈 System Health & Verification Summary
+Attempting to run an asynchronous LangGraph graph inside a synchronous request thread using `asyncio.run()` created nested event loops. Furthermore, SQLite in-memory and file databases cannot be safely shared across an active async loop and a synchronous caller thread simultaneously, resulting in immediate database lock contention.
 
-Every single component across the entire stack is backed by rigorous automated testing:
+### How We Solved It
+1. Synchronized the agent execution boundary instead of forcing the entire web application to become async.
+2. Adapted the LangGraph pipeline execution so that graph nodes invoke synchronous tool wrappers and share the caller's existing database transaction.
+3. Passed the current database `Session` directly into the agent state, ensuring that the scraping record, diff computation, finding generation, and quote persistence all commit atomically in a single, predictable transaction.
+4. Preserved all 210 existing synchronous test suites with 100% pass rates and zero race conditions.
 
-| Test Suite | Focus Area | Result |
-|---|---|:---:|
-| `test_auth.py` | JWT authentication, bcrypt hashing, token expiration | ✅ 100% Pass |
-| `test_workspaces.py` | Multi-tenant isolation, workspace permissions, CRUD | ✅ 100% Pass |
-| `test_competitors.py` | Competitor profiles, source URL registration | ✅ 100% Pass |
-| `test_adapters.py` | HTML extraction, RSS 2.0 / Atom 1.0 normalization | ✅ 100% Pass |
-| `test_diff_engine.py` | Myers diff algorithm, SHA-256 change hashing | ✅ 100% Pass |
-| `test_classifier.py` | Noise suppression, pricing & feature categorization | ✅ 100% Pass |
-| `test_scans_api.py` | Concurrent background scanning & error tolerance | ✅ 100% Pass |
-| `test_changes_api.py` | Filterable changes feed, diff retrieval endpoints | ✅ 100% Pass |
-| `test_adversarial_challenger*.py` | Malformed XML, SQL injection attempts, token tampering | ✅ 100% Pass |
-| `test_agent_pipeline_integration.py` | LangGraph Researcher, Impact Analyzer, Critic & Proposals | ✅ 100% Pass |
-| **Total Test Count** | **Full End-to-End Suite** | **✅ 210 / 210 Passed** |
+### Key Takeaway
+When introducing experimental AI frameworks into an established production codebase, adapt the AI wrapper to fit the host architecture. Never rewrite an entire working application to satisfy an asynchronous library constraint.
 
 ---
 
-## 🚀 Key Takeaways & The Road Ahead
+## 6. The Web Scraping "Noise Avalanche": Ephemeral DOM Mutation
 
-TradeCraft demonstrates that modern AI applications are most powerful not when an LLM is used as an isolated chatbot, but when it is embedded into a **disciplined engineering pipeline**:
-- **Deterministic foundations first:** Reliable web scraping, clean diffs, and heuristic filters handle 90% of the heavy lifting for pennies.
-- **Verification over generation:** Agents must be checked by other agents, and claims must point to concrete character offsets in source files.
-- **Developer ergonomics matter:** Software that boots smoothly without fragile external dependencies is software that gets built, tested, and shipped.
+### The Problem
+During initial end-to-end testing, the change-detection engine bombarded the system with "Competitor Change Detected" alerts every time a scheduled scan ran, even when the competitor's website had not changed in any meaningful way.
+
+### Why It Happened (Under the Hood)
+Modern web pages are dynamic: rotating promotional banners, dynamic CSRF/session tokens, timestamp counters, and fluctuating footer copyright notices (`© 2025` $\rightarrow$ `© 2026`) constantly alter the DOM tree. If a system naively computes a cryptographic hash or line-by-line diff on raw HTML responses, every ephemeral JavaScript variable or rotating asset looks like a major competitor maneuver.
+
+### How We Solved It
+We engineered a two-stage noise reduction pipeline:
+1. **DOM Sanitization (`HtmlAdapter`)**:
+   - Parses the HTML DOM using BeautifulSoup and aggressively strips non-content tags: `<script>`, `<style>`, `<noscript>`, `<nav>`, `<footer>`, `<header>`, cookie consents, and tracking iframes.
+   - Normalizes HTML entities and collapses redundant whitespace into single spaces.
+2. **Deterministic Heuristic Meaningfulness Classifier**:
+   - Computes Myers unified diffs exclusively on the sanitized text.
+   - Evaluates the diff against a weighted heuristic ruleset: checks for business-critical tokens (e.g. `$`, `€`, `pricing`, `plan`, `deprecated`, `release`, `feature`).
+   - If a diff contains only cosmetic updates, date bumps, or whitespace shifts, it is classified as `NOISE` and suppressed from the AI pipeline.
+   - Changes with commercial relevance are automatically categorized as `PRICING_CHANGE`, `FEATURE_RELEASE`, `POSITIONING`, or `DEPRECATION`.
+
+### Key Takeaway
+Change detection is only as good as your noise filter. You must aggressively strip ephemeral layout boilerplate and apply deterministic heuristic classification before invoking expensive downstream AI analysis.
+
+---
+
+## 7. The Serverless Execution Timeout: Vercel 15-Second Edge Limit
+
+### The Problem
+When evaluating deploying both the React frontend and the FastAPI backend as a single unified serverless repository on Vercel, API endpoints that triggered full scans or AI analyses intermittently failed with `504 Gateway Timeout`.
+
+### Why It Happened (Under the Hood)
+Vercel's Hobby/Free serverless function runtime enforces a strict **15-second execution limit** per invocation. While lightweight CRUD operations (such as authentication or fetching a competitor list) execute in under 150ms, a full competitive intelligence scan involves:
+- Outbound network requests to fetch competitor web pages.
+- HTML parsing, diff computation, and SHA-256 hashing.
+- Invoking the multi-node LangGraph pipeline (Context Researcher, Impact Analyzer, and Critic Verifier).
+- Executing iterative LLM calls and retry loops.
+
+The full AI analysis pipeline takes between 18 and 35 seconds to complete. Running this on Vercel triggered an uncatchable 504 timeout before the agent could return its response.
+
+### How We Solved It
+We separated the architecture into a **Decoupled Cloud Topology**:
+- **Frontend on Vercel**: Deployed the Vite React application as static assets distributed across Vercel's global Edge CDN, achieving sub-50ms initial load times and instant caching.
+- **Backend on Render**: Deployed the FastAPI server on a dedicated persistent container instance on Render. Persistent containers run uninterrupted without arbitrary 15-second serverless execution timeouts, allowing LangGraph multi-agent loops and background scans to run to full completion.
+- Configured dynamic API URL resolution via `VITE_API_URL` and cross-origin resource sharing (CORS) with automatic origin reflection.
+
+### Key Takeaway
+Do not force long-running multi-agent AI pipelines into serverless function runtimes with short timeout ceilings. Use Edge CDN hosting for static frontends and persistent container runtimes for agentic AI backends.
+
+---
+
+## 8. The Database Driver Conflict on Zero-Config Machines
+
+### The Problem
+When onboarding new developers or running automated CI test suites on machines without PostgreSQL installed, running `pytest` failed instantly with:
+```text
+ModuleNotFoundError: No module named 'psycopg2'
+```
+
+### Why It Happened (Under the Hood)
+`psycopg2` requires native C libraries (`libpq-dev`) to compile. In production, TradeCraft connects to cloud PostgreSQL. In local development and automated testing, TradeCraft uses SQLite for instant zero-dependency execution. However, because `import psycopg2` was placed at the top level of the database connection module, Python attempted to load the C extension upon initial package import, crashing test suites before a single test could execute.
+
+### How We Solved It
+We implemented **Lazy Fault-Tolerant Database Driver Loading**:
+1. Wrapped PostgreSQL driver imports in an exception-tolerant block:
+   ```python
+   try:
+       import psycopg2
+   except ImportError:
+       psycopg2 = None
+   ```
+2. Built a resilient engine factory (`create_db_engine`) that inspects the connection URL. If no URL is provided or if SQLite is requested, it provisions an in-memory or file-based SQLite engine with `PRAGMA foreign_keys=ON`.
+3. Added automatic URL normalization: automatically transforms legacy `postgres://` prefixes (frequently supplied by cloud providers) into SQLAlchemy-compliant `postgresql://` strings.
+
+### Key Takeaway
+A production-only database driver should never prevent a developer from running local unit tests. Build database abstractions that seamlessly degrade to zero-dependency local engines (like SQLite) when external drivers are absent.
+
+---
+
+## 9. The Punctuation Formatting Artifacts in Feed Normalization
+
+### The Problem
+In automated RSS feed ingestion tests, sanitized article excerpts intermittently failed exact string matching in the Critic agent due to floating punctuation marks (e.g. `"Patched critical security vulnerability ."` instead of `"Patched critical security vulnerability."`).
+
+### Why It Happened (Under the Hood)
+In blog and news syndication feeds, anchor tags frequently enclose the final word of a sentence before the terminal period:
+```html
+<p>Patched critical security <a href="/advisory">vulnerability</a>.</p>
+```
+When our HTML cleaner stripped HTML tags, it replaced tags with whitespace to prevent adjacent inline elements from merging together into single words (e.g. `word1</a><a>word2` becoming `word1word2`). However, because the period was placed immediately after the closing `</a>` tag, the cleaner inserted a space between the last word and the punctuation mark. While humans mentally ignore floating spaces, exact character-offset matching in the downstream Critic agent failed because the candidate quote did not match the raw snapshot character-for-character.
+
+### How We Solved It
+Added a deterministic regex post-processing filter to the sanitization pipeline:
+```python
+text = re.sub(r"\s+([.,!?;:])", r"\1", text)
+```
+This rule identifies any whitespace preceding punctuation marks and binds the punctuation directly to the preceding word, restoring natural typography and enabling 100% exact verbatim substring matching in the Critic verification engine.
+
+### Key Takeaway
+When sanitizing HTML for AI consumption, naive tag stripping corrupts sentence structure. You must enforce natural punctuation binding to ensure verbatim substring verification can match character offsets precisely.
+
+---
+
+## 10. The Browser Default User-Agent Box Artifact in Dark Mode
+
+### The Problem
+On the strategic Proposals page, the download and delete icon buttons inside the proposal cards displayed harsh, blinding white rectangular border boxes and gray backgrounds in dark mode, clashing with the glassmorphism design.
+
+### Why It Happened (Under the Hood)
+In standard HTML, native `<button>` elements carry default user-agent styling provided by the browser engine (`background-color: buttonface; border: 2px outset buttonborder; padding: 1px 6px;`). When custom Tailwind utility classes like `p-2 rounded-lg text-slate-400 hover:text-white` were applied to the button without explicitly overriding the browser's base border and background properties, WebKit and Blink browsers fell back to their default button outlines. Against a `#0a0e17` dark background, the browser's default light border appeared as a jarring white square.
+
+### How We Solved It
+1. Implemented a global CSS reset in `frontend/src/index.css` targeting all interactive button elements:
+   ```css
+   button {
+     background: transparent;
+     border: none;
+     padding: 0;
+     outline: none;
+     font-family: inherit;
+   }
+   ```
+2. Refactored the icon buttons in `frontend/src/pages/Proposal.jsx` with explicit utility classes (`bg-transparent border-0 outline-none hover:bg-slate-800/50 transition-colors`), completely eliminating the user-agent border artifact while preserving accessibility and hover states.
+
+### Key Takeaway
+Never rely on CSS frameworks alone to silence browser defaults. Explicitly reset browser user-agent button styles in base CSS to prevent dark-mode border bleeding across different rendering engines.
+
+---
+
+## Summary of Results
+
+By systematically diagnosing and eliminating each of these 10 challenges:
+- **100% Passing Test Suite**: All 210 automated unit and integration tests pass deterministically.
+- **Zero Hallucination Tolerance**: Every generated proposal is anchored by mathematically verified quotes with exact character offsets ($EGA \ge 85\%$).
+- **Multi-Cloud Production Topology**: High-speed edge UI on Vercel paired with a persistent, containerized FastAPI backend on Render connected to cloud Supabase PostgreSQL 17.
