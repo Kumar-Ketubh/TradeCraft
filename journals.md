@@ -1,274 +1,273 @@
-# TradeCraft — Technical Problems Faced & Engineering Solutions
+# TradeCraft — Core Engineering & Logical Problems Faced
 
-A comprehensive, transparent record of every major technical challenge encountered during the design, development, integration, and cloud deployment of TradeCraft, how each was diagnosed under the hood, and how it was solved.
+A technical breakdown of the core algorithmic, architectural, and data-flow problems encountered while building the **TradeCraft AI Competitive Intelligence & Proposal Engine**, how each was diagnosed under the hood, and how it was solved.
 
 ---
 
 ## Table of Contents
-1. [The "Ghost Cloud" Freeze: macOS APFS Dataless Traps](#1-the-ghost-cloud-freeze-macos-apfs-dataless-traps)
-2. [The IPv6 Outbound Black Hole: Render to Supabase Connection](#2-the-ipv6-outbound-black-hole-render-to-supabase-connection)
-3. [The Modal-Clipping & Dark-Mode Bleed Trap: PDF Generation](#3-the-modal-clipping--dark-mode-bleed-trap-pdf-generation)
-4. [The Agent Hallucination Gap: Evidence Grounding Accuracy (EGA)](#4-the-agent-hallucination-gap-evidence-grounding-accuracy-ega)
-5. [The Async vs. Sync Threading Deadlock in Agent Pipelines](#5-the-async-vs-sync-threading-deadlock-in-agent-pipelines)
-6. [The Web Scraping "Noise Avalanche": Ephemeral DOM Mutation](#6-the-web-scraping-noise-avalanche-ephemeral-dom-mutation)
-7. [The Serverless Execution Timeout: Vercel 15-Second Edge Limit](#7-the-serverless-execution-timeout-vercel-15-second-edge-limit)
-8. [The Database Driver Conflict on Zero-Config Machines](#8-the-database-driver-conflict-on-zero-config-machines)
-9. [The Punctuation Formatting Artifacts in Feed Normalization](#9-the-punctuation-formatting-artifacts-in-feed-normalization)
-10. [The Browser Default User-Agent Box Artifact in Dark Mode](#10-the-browser-default-user-agent-box-artifact-in-dark-mode)
+1. [The Evidence Grounding & Exact Verbatim Citation Problem (EGA)](#1-the-evidence-grounding--exact-verbatim-citation-problem-ega)
+2. [The Ephemeral DOM Noise vs. Substantive Change Problem (Myers Diff & Classification)](#2-the-ephemeral-dom-noise-vs-substantive-change-problem-myers-diff--classification)
+3. [The Multi-Agent State Synchronization & Verification Retry Loop](#3-the-multi-agent-state-synchronization--verification-retry-loop)
+4. [The Synchronous Database Transaction vs. Asynchronous Agent Pipeline Mismatch](#4-the-synchronous-database-transaction-vs-asynchronous-agent-pipeline-mismatch)
+5. [The Feed Ingestion Normalization & Punctuation Integrity Problem](#5-the-feed-ingestion-normalization--punctuation-integrity-problem)
+6. [The Multi-Tenant Relational Isolation & Ownership Enforcement](#6-the-multi-tenant-relational-isolation--ownership-enforcement)
+7. [The Deterministic Testing Mandate for Non-Deterministic AI Pipelines](#7-the-deterministic-testing-mandate-for-non-deterministic-ai-pipelines)
+8. [The 7-Section Strategic Proposal Synthesis & Strict Schema Validation](#8-the-7-section-strategic-proposal-synthesis--strict-schema-validation)
+9. [The Long-Running Agent Scan Pipeline vs. HTTP Request Lifecycles](#9-the-long-running-agent-scan-pipeline-vs-http-request-lifecycles)
 
 ---
 
-## 1. The "Ghost Cloud" Freeze: macOS APFS Dataless Traps
+## 1. The Evidence Grounding & Exact Verbatim Citation Problem (EGA)
 
 ### The Problem
-During development, standard Git commands (`git commit`, `git status`, `git diff`) and testing tools began hanging indefinitely with zero output. Commands would freeze for minutes, and terminal tasks could only be terminated with `kill -9`.
+When Large Language Models (LLMs) are asked to summarize competitor updates, they naturally paraphrase claims or invent plausible-sounding details that never appeared on the competitor's website. In competitive intelligence, basing a business strategy on a misquoted price, altered feature description, or hallucinated claim can lead to disastrous executive decisions.
 
 ### Why It Happened (Under the Hood)
-The workspace was located inside `~/Desktop/TradeCraft`. On macOS, when **iCloud Drive "Desktop & Documents"** is enabled with **"Optimize Mac Storage"**, the operating system's kernel silently evicts idle files from the local APFS disk to free space. 
-
-When a file is evicted, macOS leaves a pointer marked with the APFS kernel flag `dataless` (visible via `ls -laO` as `hidden,compressed,dataless`). Over 180 git objects, commit edits, and ref files (including `.git/refs/heads/ai-pipeline` and pack index files) were marked `dataless`. Whenever Git attempted an open syscall on a ref file, the macOS kernel placed the process into an uninterruptible disk wait state (`D` state), waiting for the background CloudDocs daemon (`bird`) to fetch the missing bytes from Apple's servers. Because Git locks repository indexes while reading, every subsequent Git process deadlocked on `.git/index.lock`.
+LLMs operate as probabilistic token predictors optimized for semantic fluency rather than strict literal accuracy. When given a context window of raw website text, an LLM often compresses or rephrases statements (e.g. turning *"Plans start at \$49/mo billed annually"* into *"They dropped their base tier to forty-nine dollars"*). Because the text is rephrased, standard string matching cannot verify if the competitor actually made that claim or if the model invented the nuance.
 
 ### How We Solved It
-1. Diagnosed the root cause by sampling the stuck Git process stack (`sample <pid> 1`), which revealed the thread was blocked inside `files_read_raw_ref` $\rightarrow$ `xread`.
-2. Inspected file flags with `ls -laO .git/refs/heads/` and discovered the `dataless` tag.
-3. Created an automated staging pipeline in a local, non-synced RAM volume (`/tmp`), cloned a clean repository instance, applied all modified files, committed them in sub-second time, and pushed directly to GitHub.
-4. Repaired the local workspace by unlinking (`rm -f`) the evicted placeholder files and rewriting fresh local copies directly to disk, bypassing the cloud sync daemon entirely.
+We designed an adversarial verification architecture inside our **LangGraph** multi-agent pipeline:
+1. **Verbatim Quote Mandate**: The `Context Researcher` node is strictly instructed to extract exact, verbatim candidate quote substrings from the clean snapshot text alongside its factual summary.
+2. **The Critic / Verifier Node (The Guardrail)**: Rather than trusting the LLM's quotes, the Critic node performs a deterministic, code-level search across the raw snapshot text stored in the database:
+   - For every candidate quote, it verifies whether the substring exists verbatim.
+   - If found, it computes the exact start and end character offsets (`char_offset_start` to `char_offset_end`) within the raw text.
+3. **Evidence Grounding Accuracy (EGA) Metric**:
+   $$\text{EGA} = \left(\frac{\text{Number of Verified Quotes}}{\text{Total Candidate Quotes}}\right) \times 100\%$$
+4. **Enforcement Threshold**: If $\text{EGA} < 85\%$, the finding is automatically flagged as ungrounded and downgraded or rejected.
+5. **Proposal Firewall**: The proposal engine enforces a hard database filter: any finding that does not hold a `VERIFIED` status is strictly barred from being used in executive proposals.
 
 ### Key Takeaway
-Never maintain active Git repositories or developer dependencies inside cloud-synced folders (iCloud, OneDrive, Dropbox) with automated file eviction enabled. The silent conversion of files to `dataless` placeholders breaks low-level file descriptors and version control internals.
+Never rely on an LLM to self-verify its own output. Pair generative models with deterministic, code-level validators that calculate exact character coordinates in source documents before accepting claims as factual.
 
 ---
 
-## 2. The IPv6 Outbound Black Hole: Render to Supabase Connection
+## 2. The Ephemeral DOM Noise vs. Substantive Change Problem (Myers Diff & Classification)
 
 ### The Problem
-After deploying the FastAPI backend to Render and configuring the PostgreSQL connection string to cloud Supabase, the backend server crashed on startup with the following error:
-```text
-(psycopg2.OperationalError) connection to server at "db.ptalxyofynhiszkisuay.supabase.co" 
-(2406:da14:25a:5801:0:c439:630a:4321), port 5432 failed: Network is unreachable
-```
+During initial end-to-end tests, running an automated scan against live websites flooded the database with dozens of "Competitor Changes" every single hour, even when the competitor had not made any real product, pricing, or strategic adjustments.
 
 ### Why It Happened (Under the Hood)
-Modern Supabase projects assign direct database hostnames (`db.<project-ref>.supabase.co`) that resolve exclusively to **IPv6 addresses** on their default database port (5432). However, Render's free tier runtime instances operate on an **IPv4-only** network virtualization stack and do not have outbound IPv6 routing enabled. When `psycopg2` attempted a TCP handshake to `2406:da14:...`, the host OS rejected the packet immediately with `ENETUNREACH` (Network is unreachable).
+Modern websites are highly dynamic. Even when static content remains identical, the HTML DOM changes on every request:
+- Rotating advertising banners and dynamic analytics tracking scripts.
+- Session IDs, anti-CSRF tokens, and cache-busting query parameters.
+- Server-rendered relative timestamps (e.g. *"Updated 3 minutes ago"* $\rightarrow$ *"Updated 4 minutes ago"*).
+- Footer copyright year increments (`© 2025` $\rightarrow$ `© 2026`).
+
+If a monitoring system naively computes a cryptographic SHA-256 hash or runs a raw diff on incoming HTML, every single page load looks like a brand-new change, triggering unnecessary database writes and wasting expensive AI pipeline invocations.
 
 ### How We Solved It
-Supabase maintains an **IPv4-compatible Connection Pooler** (Supavisor / PgBouncer) in each cloud region. We re-engineered the connection architecture:
-1. Resolved the project's AWS cluster region from its IPv6 subnet (`Tokyo / ap-northeast-1`).
-2. Pointed the database configuration to the regional IPv4 pooler domain: `aws-0-ap-northeast-1.pooler.supabase.com`.
-3. Updated the authentication username format to include the tenant project reference (`postgres.<project-ref>`) and set the port to `6543` (transaction mode).
-4. Configured SQLAlchemy engine arguments with `sslmode=require`, `pool_pre_ping=True`, and automatic URL normalization (`postgres://` $\rightarrow$ `postgresql://`).
-5. Verified the fix with a live Python test script, achieving sub-300ms connection handshakes.
+We engineered a two-stage noise reduction pipeline:
+1. **DOM Sanitization (`HtmlAdapter`)**:
+   - Parses the HTML DOM using BeautifulSoup and strips out non-content elements: `<script>`, `<style>`, `<noscript>`, `<nav>`, `<footer>`, `<header>`, cookie banners, and modal overlays.
+   - Decodes HTML entities and normalizes whitespace into single-space delimiters before generating the snapshot hash.
+2. **Deterministic Heuristic Meaningfulness Classifier**:
+   - Computes line-by-line diffs using the **Myers unified diff algorithm**.
+   - Evaluates the diff chunks against a weighted heuristic ruleset: checks for business-critical indicators such as currency symbols (`$`, `€`, `£`), pricing keywords (`per user`, `billed annually`, `enterprise tier`), and product lifecycle verbs (`deprecated`, `introducing`, `new feature`, `discontinued`).
+   - If a diff contains only cosmetic updates, date changes, or formatting adjustments, it is tagged as `NOISE` and immediately dropped from the AI pipeline.
+   - Significant changes are automatically classified into domain categories: `PRICING_CHANGE`, `FEATURE_RELEASE`, `POSITIONING`, or `DEPRECATION`.
 
 ### Key Takeaway
-Cloud platforms have divergent network capabilities. When connecting a container platform (like Render) to a managed database (like Supabase), never rely on direct hostnames that may resolve to IPv6; always utilize regional IPv4 connection poolers with SSL enforcement.
+Effective change monitoring is fundamentally a noise-filtering problem. Raw diffing without structural DOM sanitization and heuristic classification produces overwhelming noise that drowns out genuine strategic signals.
 
 ---
 
-## 3. The Modal-Clipping & Dark-Mode Bleed Trap: PDF Generation
+## 3. The Multi-Agent State Synchronization & Verification Retry Loop
 
 ### The Problem
-When users clicked "Export to PDF" on a strategic proposal, the generated PDF was either completely blank, clipped to the tiny height of the scrollable modal viewport (rendering only the first page and cutting off the rest), or printed with a muddy black background and unreadable dark-gray text.
+In early iterations of our agentic workflow, when the Critic agent rejected a finding because the extracted quotes could not be verified in the source text, the entire pipeline would either crash, terminate with an empty result, or enter an infinite loop trying to re-analyze the same broken text.
 
 ### Why It Happened (Under the Hood)
-The proposal reader UI is rendered inside a glassmorphic React modal with fixed positioning (`fixed inset-0 overflow-y-auto backdrop-blur-xl`). When standard browser printing (`window.print()`) was triggered:
-1. **Viewport Clipping**: The browser's print engine respects CSS overflow boundaries. Because the parent container had `overflow-y-auto` and a constrained height, the print renderer treated the modal as a single scroll box, printing only what was visible on screen and truncating pages 2 through 7.
-2. **Dark Mode Bleed**: The application uses dark-theme CSS variables (`--bg-primary: #0a0e17`, `--text-primary: #f8fafc`). The print engine carried these dark background colors into the print canvas, resulting in heavy black toner consumption and broken contrast.
-3. **Visibility Hiding**: Attempting to hide other elements via CSS (`body * { visibility: hidden; }`) inadvertently collapsed the height of the modal content to zero, producing blank white output.
+In multi-agent systems, agents must pass state between each other. Our workflow involves three specialized roles:
+$$\text{Context Researcher} \longrightarrow \text{Impact Analyzer} \longrightarrow \text{Critic / Verifier}$$
+If the Critic rejects a candidate quote, simply throwing an error wastes the compute already spent by the Researcher and Analyzer. Conversely, naively routing the graph back to the beginning without passing critique feedback causes the upstream agent to generate the exact same hallucinated quote again, causing an infinite cycle.
 
 ### How We Solved It
-We engineered an isolated **Offscreen Iframe Print Engine** (`frontend/src/utils/pdfExport.js`):
-1. Instead of printing the active DOM tree, the utility dynamically instantiates an invisible, isolated `<iframe>` appended to `document.body`.
-2. Converts the proposal's Markdown into semantic HTML with structured metadata headers.
-3. Injects dedicated, standalone high-contrast typography styles exclusively into the iframe's isolated DOM:
-   - Enforces a crisp white background with `#111827` primary body text.
-   - Sets strict print rules: `@page { size: A4; margin: 20mm; }`.
-   - Forces clean pagination without awkward orphans: `h2 { page-break-before: always; }` and `table, blockquote { page-break-inside: avoid; }`.
-4. Executes printing solely on the iframe (`iframe.contentWindow.print()`), then unlinks and destroys the iframe after the user saves or cancels.
+We modeled the workflow as a formal **LangGraph StateGraph** with structured memory and bounded conditional routing:
+1. **Typed Agent State (`AgentState`)**: Built a structured state dictionary that flows across all nodes, carrying the raw snapshot text, clean diff, extracted quotes, candidate findings, critique notes, and an explicit `retry_count`.
+2. **Critique Feedback Injection**: When the Critic calculates an $\text{EGA} < 85\%$, it appends specific feedback into the state (e.g., *"Quote 'X' was not found verbatim in source text; re-extract from lines 12–24"*).
+3. **Bounded Conditional Edges**: We added a conditional routing edge after the Critic node:
+   - If $\text{EGA} \ge 85\%$, route to the persistence node (`save_finding`).
+   - If $\text{EGA} < 85\%$ and `retry_count < max_retries` (default: 2), increment `retry_count` and route back to the `Impact Analyzer` with the critique feedback.
+   - If `retry_count >= max_retries`, mark the finding as `REJECTED` or `DOWNGRADED` and terminate cleanly without infinite looping.
 
 ### Key Takeaway
-Never attempt to print directly from complex SPA component trees or modals using global CSS print media queries. Always generate an isolated document context (via offscreen iframe or virtual DOM) with independent, print-specific typography.
+Agentic workflows require explicit state machines with bounded retry limits and structured feedback channels. Without deterministic routing conditions, multi-agent loops easily degrade into infinite loops or silent failures.
 
 ---
 
-## 4. The Agent Hallucination Gap: Evidence Grounding Accuracy (EGA)
+## 4. The Synchronous Database Transaction vs. Asynchronous Agent Pipeline Mismatch
 
 ### The Problem
-In early AI prototypes, when language models were prompted to summarize competitor updates and propose countermeasures, they frequently hallucinated: they invented plausible-sounding pricing tiers, exaggerated competitor features, or rephrased statements so heavily that the original claim could not be traced back to the competitor's website. In competitive intelligence, citing false competitor claims can mislead business strategy.
-
-### Why It Happened (Under the Hood)
-Large language models are probabilistic token predictors optimized for fluency rather than factual fidelity. Without strict deterministic boundaries, the model fills in memory gaps by generating plausible text ("hallucination"). Standard retrieval pipelines often pass raw text chunks without verifying that the LLM's output claims actually exist in the retrieved document.
-
-### How We Solved It
-We designed a stateful multi-agent pipeline using **LangGraph** with an adversarial verification stage:
-1. **Context Researcher Node**: Analyzes candidate diffs against the clean snapshot and identifies factual claims, extracting candidate verbatim quotes.
-2. **Impact Analyzer Node**: Synthesizes business threat analysis, product positioning impact, and recommended responses.
-3. **Critic / Verifier Node (The Guardrail)**: Takes every candidate quote and executes an exact, deterministic substring search against the raw snapshot text stored in the database.
-   - For every verified match, it records the exact character coordinates (`char_offset_start` to `char_offset_end`).
-   - Computes the **Evidence Grounding Accuracy (EGA)** metric:
-     $$\text{EGA} = \left(\frac{\text{Verified Quotes}}{\text{Candidate Quotes}}\right) \times 100\%$$
-   - Enforces strict thresholds: if $\text{EGA} < 85\%$, the finding is automatically downgraded or rejected, and the loop can trigger a retry.
-4. **Proposal Engine Firewall**: The proposal generator strictly bars any finding that does not hold a `VERIFIED` status, guaranteeing that executive proposals only cite grounded, offset-mapped evidence.
-
-### Key Takeaway
-Do not rely on the LLM to self-police its own accuracy. Pair generative models with deterministic, code-level verifiers (exact character offset mapping) to measure factual grounding before any output reaches the user.
-
----
-
-## 5. The Async vs. Sync Threading Deadlock in Agent Pipelines
-
-### The Problem
-When integrating the LangGraph agent pipeline into TradeCraft's existing backend, the test suite and background scan workers began deadlocking. Tests either hung forever or crashed with:
+When integrating the LangGraph agent pipeline into TradeCraft's backend, background scans and test suites began deadlocking. Tests either froze indefinitely or threw errors:
 ```text
 RuntimeError: Task <...> got Future <...> attached to a different loop
 OperationalError: (sqlite3.OperationalError) database is locked
 ```
 
 ### Why It Happened (Under the Hood)
-The AI agent pipeline was initially written using Python's asynchronous event loop paradigm (`async def` with SQLAlchemy's `AsyncSession`). However, TradeCraft's existing web routers, multi-tenant permission layers, and 200+ unit test fixtures were architected with synchronous SQLAlchemy sessions (`Session = sessionmaker()`). 
+LangGraph and modern LLM frameworks are architected around Python's asynchronous event loop (`async def` with `asyncio`). However, TradeCraft's existing REST endpoints, multi-tenant permission layers, and 200+ unit test fixtures were built using synchronous SQLAlchemy sessions (`Session = sessionmaker()`).
 
-Attempting to run an asynchronous LangGraph graph inside a synchronous request thread using `asyncio.run()` created nested event loops. Furthermore, SQLite in-memory and file databases cannot be safely shared across an active async loop and a synchronous caller thread simultaneously, resulting in immediate database lock contention.
+When a synchronous FastAPI endpoint or test fixture attempted to run an async LangGraph graph using `asyncio.run()`, it spawned nested, competing event loops on worker threads. Because SQLite (used in automated testing) and PostgreSQL connection pools hold row-level or file-level locks during active transactions, having an asynchronous coroutine attempt to query the database while the parent synchronous thread held an open session caused immediate database deadlocks.
 
 ### How We Solved It
-1. Synchronized the agent execution boundary instead of forcing the entire web application to become async.
-2. Adapted the LangGraph pipeline execution so that graph nodes invoke synchronous tool wrappers and share the caller's existing database transaction.
-3. Passed the current database `Session` directly into the agent state, ensuring that the scraping record, diff computation, finding generation, and quote persistence all commit atomically in a single, predictable transaction.
-4. Preserved all 210 existing synchronous test suites with 100% pass rates and zero race conditions.
+Instead of rewriting all 200+ tests and database models to be asynchronous, we synchronized the agent execution boundary:
+1. Adapted the LangGraph pipeline execution so that graph nodes invoke synchronous tool wrappers.
+2. Passed the caller's active database `Session` directly into the agent state.
+3. Structured database writes so that the snapshot creation, diff generation, finding insertion, and evidence quote offset mapping all occur within the **same atomic database transaction**.
+4. If an agent step fails, the caller's transaction cleanly rolls back, preventing orphaned findings or detached quotes.
 
 ### Key Takeaway
-When introducing experimental AI frameworks into an established production codebase, adapt the AI wrapper to fit the host architecture. Never rewrite an entire working application to satisfy an asynchronous library constraint.
+When introducing modern AI libraries into an existing production stack, adapt the AI wrapper to fit the application's transaction lifecycle—never rewrite working transactional infrastructure to satisfy an external library's async bias.
 
 ---
 
-## 6. The Web Scraping "Noise Avalanche": Ephemeral DOM Mutation
+## 5. The Feed Ingestion Normalization & Punctuation Integrity Problem
 
 ### The Problem
-During initial end-to-end testing, the change-detection engine bombarded the system with "Competitor Change Detected" alerts every time a scheduled scan ran, even when the competitor's website had not changed in any meaningful way.
+In automated RSS feed tests, candidate quotes extracted from competitor changelogs and blogs repeatedly failed exact substring verification in the Critic agent, even though the text was visibly present on the competitor's page.
 
 ### Why It Happened (Under the Hood)
-Modern web pages are dynamic: rotating promotional banners, dynamic CSRF/session tokens, timestamp counters, and fluctuating footer copyright notices (`© 2025` $\rightarrow$ `© 2026`) constantly alter the DOM tree. If a system naively computes a cryptographic hash or line-by-line diff on raw HTML responses, every ephemeral JavaScript variable or rotating asset looks like a major competitor maneuver.
-
-### How We Solved It
-We engineered a two-stage noise reduction pipeline:
-1. **DOM Sanitization (`HtmlAdapter`)**:
-   - Parses the HTML DOM using BeautifulSoup and aggressively strips non-content tags: `<script>`, `<style>`, `<noscript>`, `<nav>`, `<footer>`, `<header>`, cookie consents, and tracking iframes.
-   - Normalizes HTML entities and collapses redundant whitespace into single spaces.
-2. **Deterministic Heuristic Meaningfulness Classifier**:
-   - Computes Myers unified diffs exclusively on the sanitized text.
-   - Evaluates the diff against a weighted heuristic ruleset: checks for business-critical tokens (e.g. `$`, `€`, `pricing`, `plan`, `deprecated`, `release`, `feature`).
-   - If a diff contains only cosmetic updates, date bumps, or whitespace shifts, it is classified as `NOISE` and suppressed from the AI pipeline.
-   - Changes with commercial relevance are automatically categorized as `PRICING_CHANGE`, `FEATURE_RELEASE`, `POSITIONING`, or `DEPRECATION`.
-
-### Key Takeaway
-Change detection is only as good as your noise filter. You must aggressively strip ephemeral layout boilerplate and apply deterministic heuristic classification before invoking expensive downstream AI analysis.
-
----
-
-## 7. The Serverless Execution Timeout: Vercel 15-Second Edge Limit
-
-### The Problem
-When evaluating deploying both the React frontend and the FastAPI backend as a single unified serverless repository on Vercel, API endpoints that triggered full scans or AI analyses intermittently failed with `504 Gateway Timeout`.
-
-### Why It Happened (Under the Hood)
-Vercel's Hobby/Free serverless function runtime enforces a strict **15-second execution limit** per invocation. While lightweight CRUD operations (such as authentication or fetching a competitor list) execute in under 150ms, a full competitive intelligence scan involves:
-- Outbound network requests to fetch competitor web pages.
-- HTML parsing, diff computation, and SHA-256 hashing.
-- Invoking the multi-node LangGraph pipeline (Context Researcher, Impact Analyzer, and Critic Verifier).
-- Executing iterative LLM calls and retry loops.
-
-The full AI analysis pipeline takes between 18 and 35 seconds to complete. Running this on Vercel triggered an uncatchable 504 timeout before the agent could return its response.
-
-### How We Solved It
-We separated the architecture into a **Decoupled Cloud Topology**:
-- **Frontend on Vercel**: Deployed the Vite React application as static assets distributed across Vercel's global Edge CDN, achieving sub-50ms initial load times and instant caching.
-- **Backend on Render**: Deployed the FastAPI server on a dedicated persistent container instance on Render. Persistent containers run uninterrupted without arbitrary 15-second serverless execution timeouts, allowing LangGraph multi-agent loops and background scans to run to full completion.
-- Configured dynamic API URL resolution via `VITE_API_URL` and cross-origin resource sharing (CORS) with automatic origin reflection.
-
-### Key Takeaway
-Do not force long-running multi-agent AI pipelines into serverless function runtimes with short timeout ceilings. Use Edge CDN hosting for static frontends and persistent container runtimes for agentic AI backends.
-
----
-
-## 8. The Database Driver Conflict on Zero-Config Machines
-
-### The Problem
-When onboarding new developers or running automated CI test suites on machines without PostgreSQL installed, running `pytest` failed instantly with:
-```text
-ModuleNotFoundError: No module named 'psycopg2'
-```
-
-### Why It Happened (Under the Hood)
-`psycopg2` requires native C libraries (`libpq-dev`) to compile. In production, TradeCraft connects to cloud PostgreSQL. In local development and automated testing, TradeCraft uses SQLite for instant zero-dependency execution. However, because `import psycopg2` was placed at the top level of the database connection module, Python attempted to load the C extension upon initial package import, crashing test suites before a single test could execute.
-
-### How We Solved It
-We implemented **Lazy Fault-Tolerant Database Driver Loading**:
-1. Wrapped PostgreSQL driver imports in an exception-tolerant block:
-   ```python
-   try:
-       import psycopg2
-   except ImportError:
-       psycopg2 = None
-   ```
-2. Built a resilient engine factory (`create_db_engine`) that inspects the connection URL. If no URL is provided or if SQLite is requested, it provisions an in-memory or file-based SQLite engine with `PRAGMA foreign_keys=ON`.
-3. Added automatic URL normalization: automatically transforms legacy `postgres://` prefixes (frequently supplied by cloud providers) into SQLAlchemy-compliant `postgresql://` strings.
-
-### Key Takeaway
-A production-only database driver should never prevent a developer from running local unit tests. Build database abstractions that seamlessly degrade to zero-dependency local engines (like SQLite) when external drivers are absent.
-
----
-
-## 9. The Punctuation Formatting Artifacts in Feed Normalization
-
-### The Problem
-In automated RSS feed ingestion tests, sanitized article excerpts intermittently failed exact string matching in the Critic agent due to floating punctuation marks (e.g. `"Patched critical security vulnerability ."` instead of `"Patched critical security vulnerability."`).
-
-### Why It Happened (Under the Hood)
-In blog and news syndication feeds, anchor tags frequently enclose the final word of a sentence before the terminal period:
+Competitor news feeds (RSS 2.0 and Atom 1.0) frequently wrap hyperlinks around key terms at the end of sentences:
 ```html
 <p>Patched critical security <a href="/advisory">vulnerability</a>.</p>
 ```
-When our HTML cleaner stripped HTML tags, it replaced tags with whitespace to prevent adjacent inline elements from merging together into single words (e.g. `word1</a><a>word2` becoming `word1word2`). However, because the period was placed immediately after the closing `</a>` tag, the cleaner inserted a space between the last word and the punctuation mark. While humans mentally ignore floating spaces, exact character-offset matching in the downstream Critic agent failed because the candidate quote did not match the raw snapshot character-for-character.
+When our HTML parser stripped the tags, it inserted a whitespace character for every closing tag to prevent adjacent words from colliding (e.g. `word1</a><a>word2` becoming `word1word2`). However, because the period was located immediately after the closing `</a>` tag, the cleaner inserted an artificial space between the word and the period:
+```text
+"Patched critical security vulnerability ."
+```
+While human readers overlook a floating space before a period, the Critic agent's substring search algorithm performs an exact, character-by-character comparison. Because the candidate quote had `"vulnerability ."` but the raw snapshot had `"vulnerability."`, the substring search failed, causing the Critic to reject legitimate quotes and lower the EGA score.
 
 ### How We Solved It
-Added a deterministic regex post-processing filter to the sanitization pipeline:
+We added an automated regex post-processing filter to the sanitization pipeline:
 ```python
 text = re.sub(r"\s+([.,!?;:])", r"\1", text)
 ```
-This rule identifies any whitespace preceding punctuation marks and binds the punctuation directly to the preceding word, restoring natural typography and enabling 100% exact verbatim substring matching in the Critic verification engine.
+This rule detects any whitespace preceding punctuation marks and binds the punctuation directly to the preceding word. This restored natural typography while ensuring 100% exact verbatim character alignment between parsed candidate quotes and the raw snapshot text.
 
 ### Key Takeaway
-When sanitizing HTML for AI consumption, naive tag stripping corrupts sentence structure. You must enforce natural punctuation binding to ensure verbatim substring verification can match character offsets precisely.
+Data cleaning for AI verification requires typographic precision. In exact-match verification systems, minor whitespace inconsistencies around punctuation will break substring matching and trigger false hallucination rejections.
 
 ---
 
-## 10. The Browser Default User-Agent Box Artifact in Dark Mode
+## 6. The Multi-Tenant Relational Isolation & Ownership Enforcement
 
 ### The Problem
-On the strategic Proposals page, the download and delete icon buttons inside the proposal cards displayed harsh, blinding white rectangular border boxes and gray backgrounds in dark mode, clashing with the glassmorphism design.
+TradeCraft is designed as a multi-tenant system where organizations manage sensitive competitor intelligence. In early endpoint designs, an authenticated user belonging to Workspace A could theoretically access or trigger scans on a competitor belonging to Workspace B simply by knowing or guessing the target ID (`competitor_id` or `change_id`).
 
 ### Why It Happened (Under the Hood)
-In standard HTML, native `<button>` elements carry default user-agent styling provided by the browser engine (`background-color: buttonface; border: 2px outset buttonborder; padding: 1px 6px;`). When custom Tailwind utility classes like `p-2 rounded-lg text-slate-400 hover:text-white` were applied to the button without explicitly overriding the browser's base border and background properties, WebKit and Blink browsers fell back to their default button outlines. Against a `#0a0e17` dark background, the browser's default light border appeared as a jarring white square.
+Standard CRUD implementations often query entities directly by primary key:
+```python
+# Vulnerable pattern
+competitor = db.query(Competitor).filter(Competitor.id == competitor_id).first()
+```
+While authentication checks verify *who* the user is (valid JWT token), they do not verify whether that user has authorization to access the specific requested resource. Because primary keys in relational databases are often sequential integers or guessable identifiers, querying solely by entity ID allows unauthorized cross-tenant data leaks (Insecure Direct Object References - IDOR).
 
 ### How We Solved It
-1. Implemented a global CSS reset in `frontend/src/index.css` targeting all interactive button elements:
-   ```css
-   button {
-     background: transparent;
-     border: none;
-     padding: 0;
-     outline: none;
-     font-family: inherit;
-   }
+We implemented strict **Relational Hierarchy Traversal Guards** across all database queries:
+1. Every entity in TradeCraft belongs to a strict relational hierarchy:
+   $$\text{User} \longrightarrow \text{WorkspaceMember} \longrightarrow \text{Workspace} \longrightarrow \text{Competitor} \longrightarrow \text{Source} \longrightarrow \text{ScanRun} \longrightarrow \text{Change} \longrightarrow \text{Finding}$$
+2. Created a FastAPI dependency (`get_current_workspace`) that extracts the authenticated user from the JWT and validates their active workspace membership.
+3. Every single query joins through the `Workspace` entity and filters by the authenticated `workspace_id`:
+   ```python
+   # Secure pattern
+   competitor = db.query(Competitor).join(Workspace).filter(
+       Competitor.id == competitor_id,
+       Workspace.id == current_user_workspace_id
+   ).first()
    ```
-2. Refactored the icon buttons in `frontend/src/pages/Proposal.jsx` with explicit utility classes (`bg-transparent border-0 outline-none hover:bg-slate-800/50 transition-colors`), completely eliminating the user-agent border artifact while preserving accessibility and hover states.
+4. If an entity exists in the database but belongs to another tenant, the API returns a `404 Not Found` rather than a `403 Forbidden`, preventing attackers from enumerating the existence of other tenants' competitor IDs.
 
 ### Key Takeaway
-Never rely on CSS frameworks alone to silence browser defaults. Explicitly reset browser user-agent button styles in base CSS to prevent dark-mode border bleeding across different rendering engines.
+Authentication is not authorization. In multi-tenant relational systems, every database query must explicitly join through the tenant ownership boundary rather than relying on global primary key lookups.
 
 ---
 
-## Summary of Results
+## 7. The Deterministic Testing Mandate for Non-Deterministic AI Pipelines
 
-By systematically diagnosing and eliminating each of these 10 challenges:
-- **100% Passing Test Suite**: All 210 automated unit and integration tests pass deterministically.
-- **Zero Hallucination Tolerance**: Every generated proposal is anchored by mathematically verified quotes with exact character offsets ($EGA \ge 85\%$).
-- **Multi-Cloud Production Topology**: High-speed edge UI on Vercel paired with a persistent, containerized FastAPI backend on Render connected to cloud Supabase PostgreSQL 17.
+### The Problem
+Running automated test suites (CI/CD) that depend on external LLM APIs (OpenAI, Gemini, Groq) creates fragile, non-deterministic builds. Tests frequently fail due to API rate limits, network latency, billing quotas, or slight variations in model responses.
+
+### Why It Happened (Under the Hood)
+Generative LLMs are inherently non-deterministic: setting `temperature=0` reduces randomness but does not guarantee identical token sequences across model revisions. Furthermore, unit testing a 210-test suite against live cloud APIs takes minutes, consumes costly API credits, and breaks completely when running in offline development environments.
+
+### How We Solved It
+We architected a **Zero-Paid-API Modular Factory Pattern** (`LLMProviderFactory`):
+1. **The Deterministic Mock Adapter (`MockLLM`)**: Built an offline adapter that simulates LLM reasoning deterministically without network calls.
+   - Parses the candidate diff using deterministic keyword extraction.
+   - Extracts real substrings from the actual snapshot text, guaranteeing valid character offsets.
+   - Generates predictable, structured findings with reproducible EGA scores ($\ge 90\%$) and complete 7-section proposal documents.
+2. **Pluggable Real LLM Adapters**: Created seamless runtime adapters for live free-tier providers (Google Gemini 1.5 Flash, Groq Llama-3.3, and local Ollama) that adhere to the exact same interface.
+3. **Test Suite Independence**: Configured the automated test suite (`pytest`) to run exclusively against the deterministic mock model. All 210 tests execute in seconds, run fully offline, and produce 100% reproducible results.
+
+### Key Takeaway
+Never couple continuous integration test suites to live, non-deterministic third-party AI APIs. Always design a deterministic mock provider that simulates domain logic predictably for rapid, offline testing.
+
+---
+
+## 8. The 7-Section Strategic Proposal Synthesis & Strict Schema Validation
+
+### The Problem
+When asked to generate executive counter-proposals based on competitor findings, raw language models frequently produced unstructured essays, missed critical business analysis sections, or omitted concrete feature implementation roadmaps.
+
+### Why It Happened (Under the Hood)
+Unconstrained LLMs treat document generation as open-ended text completion. Without structural boundaries, the model prioritizes whatever section it weights most heavily, often producing an extensive problem statement while completely skipping commercial countermeasures or engineering timelines. For executive decision-makers, inconsistent proposal formats make cross-competitor evaluation impossible.
+
+### How We Solved It
+We engineered the **Proposal Engine** (`backend/app/services/proposal_engine/`) with structural schema enforcement:
+1. **The 7-Section Document Standard**: Mandated that every generated proposal strictly adhere to exactly seven Markdown H2 sections:
+   - `## 1. Problem / Opportunity` — Commercial urgency and market shift.
+   - `## 2. Competitor Change` — Verified competitor updates and categorization.
+   - `## 3. Evidence` — Verbatim snapshot excerpts with offset-backed citations.
+   - `## 4. Strategic Impact` — Impact on retention, sales pipeline, and market positioning.
+   - `## 5. Proposed Response` — Recommended strategic countermeasure.
+   - `## 6. Suggested Features/Work` — Phased roadmap (Immediate Parity, Differentiators, GTM).
+   - `## 7. Expected Value` — Projected ROI, churn reduction, and strategic alignment.
+2. **Pre-Persistence Schema Validator**: The proposal engine parses the generated text before saving. If any of the 7 required sections are missing or malformed, the validator rejects the output and triggers a corrective regeneration pass.
+3. **Evidence Linkage**: The engine programmatically injects verified `EvidenceQuote` records directly into Section 3, ensuring every claim is backed by timestamps, source URLs, and verbatim quotes.
+
+### Key Takeaway
+Executive business documents cannot be left to freeform LLM generation. Enforce strict structural templates with code-level schema validation to guarantee consistency and completeness.
+
+---
+
+## 9. The Long-Running Agent Scan Pipeline vs. HTTP Request Lifecycles
+
+### The Problem
+When users clicked "Run Scan" on a competitor source, the frontend would frequently hang for 30 seconds and then throw a connection timeout or network error, leaving the user unsure whether the scan succeeded or failed.
+
+### Why It Happened (Under the Hood)
+A full competitor intelligence scan is a heavy, multi-stage pipeline:
+1. Outbound network request to fetch the competitor's HTML or RSS feed.
+2. DOM parsing, boilerplate suppression, and SHA-256 fingerprinting.
+3. Myers diff computation against the historical snapshot.
+4. Heuristic meaningfulness classification.
+5. Invoking the 3-stage LangGraph AI pipeline (Researcher $\rightarrow$ Analyzer $\rightarrow$ Critic) with iterative verification loops.
+
+Executing this entire sequence synchronously inside a single HTTP request handler takes 15–35 seconds. Web browsers, API gateways, and reverse proxies typically enforce client connection timeouts (often 10–15 seconds), terminating the TCP connection long before the backend finishes processing.
+
+### How We Solved It
+We decoupled scan execution using an **Asynchronous Job / State Pattern**:
+1. **Immediate Job Acknowledgment**: When `POST /workspaces/{id}/scan` is invoked, the endpoint creates a `ScanRun` record in the database with status `PENDING`, dispatches a background task (`BackgroundTasks` in FastAPI), and immediately returns a `202 Accepted` response with the `scan_run_id` in under 100ms.
+2. **Background Execution**: The background worker executes the ingestion, diffing, and LangGraph agent pipeline independently of the client HTTP connection.
+3. **Granular State Transitions**: As the pipeline advances, it updates the `ScanRun` status:
+   $$\text{PENDING} \longrightarrow \text{IN_PROGRESS} \longrightarrow \text{COMPLETED} \quad (\text{or } \text{FAILED})$$
+4. **Client Polling**: The frontend receives the job ID instantly and polls `GET /scans/{id}` to display a real-time progress indicator, updating the dashboard smoothly once the scan completes.
+
+### Key Takeaway
+Never execute multi-stage agent workflows synchronously within a client HTTP request loop. Acknowledge the job immediately with a tracking ID and execute the agent pipeline as a decoupled background task.
+
+---
+
+## Summary of Engineering Architecture
+
+| Layer | Core Problem Solved | Engineering Solution |
+|---|---|---|
+| **Ingestion** | Dynamic DOM noise & false alarms | Boilerplate strip-down + Heuristic Diff Classifier |
+| **Ingestion** | Broken punctuation in RSS feeds | Post-sanitization regex binding (`re.sub`) |
+| **Agent AI** | Hallucinations & fabricated claims | LangGraph Critic node with exact character offset mapping |
+| **Agent AI** | Unstable multi-agent retry loops | StateGraph typed memory with critique feedback injection |
+| **Data Layer** | Async vs. Sync database deadlocks | Harmonized synchronous execution in caller transaction |
+| **Security** | Cross-tenant data leaks (IDOR) | Mandatory relational hierarchy traversal guards |
+| **Testing** | Flaky, expensive CI test suites | Deterministic `MockLLM` provider running 210 tests offline |
+| **Proposals** | Inconsistent, unformatted output | 7-Section schema validation engine with evidence citations |
+| **API Runtime** | Request connection timeouts | 202 Accepted background worker pattern with state polling |
